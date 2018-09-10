@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block styles %}
+<link href="{% static 'sourcebasesite/css/issue-nav.css' %}?version=1" rel="stylesheet">
+{% endblock styles %}
+
+
+{% block content %}
+
+	<!-- Error Message -->
+
+	<div class="row">
+		<div class="col-sm-12">
+			{% if error %}
+				<h3 style="font-style: red;">{{error}}</h3>
+			{% endif %}
+		</div>
+	</div>
+
+
+	<!-- Issue title -->
+
+	<div class="row">
+		<div class="col-sm-9">
+			<h2>  Issue  </h2> <!-- don't truncate characters -->
+		</div>
+		<div class="col-sm-3">
+			<div class="btn-group issue" role="group">
+				<a class="btn btn-outline-success float-right" role="button" data-toggle="collapse" href="#collapseExample" aria-expanded="false" aria-controls="collapseExample">
+				  	Tags <span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
+				</a>
+				<a href="{% url 'issuesite:editIssue' issue.key.id %}" class="btn btn-outline-success my-2 my-sm-0 float-right" role="button">
+					Edit Issue
+				</a>
+			</div>
+		</div>
+	</div>
+	<hr class="featurette-divider">
+	<div class="row">
+		<div class="col-sm-12">
+			<div class="collapse" id="collapseExample">
+	            <div class="well">
+		            <div class="row">
+		            	<div class="col-sm-10">
+			            	<h5>Topics related to this issue.</h5>
+			           	</div>
+			        </div>
+		            <div  id="issue_detail_taggle" class="textarea input clearfix example1"></div>
+	        	</div>
+			  <hr class="featurette-divider">
+			</div>
+		</div>
+	</div>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+	<script src="{% static 'sourcebasesite/taggle.js-1.11.1/src/taggle.min.js' %}"></script>
+	<script>
+		new Taggle('issue_detail_taggle', {
+    		tags: {{ tags|safe }}
+			});
+	</script>
+	<div class="row">
+		<div class="col-sm-12">
+			<h2>{{ issue.title | safe }} </h2> <!-- don't truncate characters -->
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-sm-12">
+			<h6>Created by <a target="_blank" href="/users/{{ issue.author.2 | safe }}">{{ issue.author.0 | safe }}</a>. </h6> <!-- don't truncate characters -->
+		</div>
+	</div>
+	<br>
+	<!-- Issue description -->
+
+	<div class="row">
+		<div class="col-sm-12">
+		 	{{ issue.description | safe }}  <!-- don't truncate characters -->
+		</div>
+	</div>
+
+	<hr class="featurette-divider">
+
+
+	<!-- Claims title -->
+	{% if claims %}
+		<div class="row">
+			<div class="col-sm-12">
+			 	<h2 class="section text-center"> Claims </h2>
+			</div>
+	</div>
+	{% endif %}
+
+
+
+	<div class="row">
+		<div class="col-sm-12">
+		    {% for claim in claims %}
+		        <a target="_blank" class='list-group-item list-group-item-action' style="display: block;" href="{% url 'issuesite:claimDetail' issueID=issue.slug claimID=claim.slug %}">
+		        	<div class='row'>
+		        		<div class="col-sm-12">
+		        			<h3>{{ claim.title | truncatechars:100}}</h3>
+		        		</div>
+		        	</div>
+		        	<div class='row'>
+		        		<div class="col-sm-12">
+		        			<p> {{ claim.description | safe | truncatechars:300}} </p>
+		        		</div>
+		        	</div>
+		        </a>
+		    {% endfor %}
+		</div>
+	</div>
+
+
+
+        	
+
+{% endblock content %}
+
+{% block scripts %}
+	<script>
+		var menuid = "navbar-issues";
+		$(function() {
+		    $('#' + menuid).addClass("active");
+		});
+	</script>
+{% endblock scripts %}

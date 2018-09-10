@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+
+{% block content %}
+<div class="row">
+	<div class="col-sm-3">
+		<a href="{% url 'createEntities' %}" class="btn btn-outline-primary my-2 my-sm-0 float-right" role="button">
+			Create Entities
+		</a>
+	</div>
+	<div class="col-sm-3">
+		<a href="{% url 'deleteEntities' %}" class="btn btn-outline-primary my-2 my-sm-0 float-right" role="button">
+			Delete Entities
+		</a>
+	</div>
+</div>
+
+
+{% endblock content %}
+
+{% block scripts %}
+
+
+{% endblock scripts %}

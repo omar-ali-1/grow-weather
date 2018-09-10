@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block styles %}
+<link href="{% static 'issuesite/css/hierarchy_styles.css' %}?version=1" rel="stylesheet">
+{% endblock styles %}
+
+
+{% block content %}
+<div class="row">
+	<div class="col-sm-12">
+		{% if error %}
+		<h3>{{error}}</h3>
+		{% endif %}
+	</div>
+</div>
+
+
+<!-- https://bootsnipp.com/snippets/2Gq5 -->
+<div class="row">
+	<div class="col-sm-12">
+    <div id="bc1" class="myBreadcrumb">
+        <a href="#" class="active"><i class="fa fa-home fa-2x"></i></a>
+    	<a href="{% url 'issuesite:issueDetail' issueID=issue.key.id %}"><div>{{issue.title|truncatechars:70}}</div></a>
+    	<a href="#"><div>{{claim.title|truncatechars:70}}</div></a>
+    </div>
+		<hr class="featurette-divider">
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-sm-12">
+		<a href="{% url 'issuesite:editClaim' issueID=issue.key.id claimID=claim.key.id %}" class="btn btn-outline-primary" role="button">Edit Claim</a>
+
+		<div class="btn-group" role="group" aria-label="...">
+			<button type="button" class="btn btn-outline-primary" role="button" data-toggle="collapse" href="#collapseExample" aria-expanded="false" aria-controls="collapseExample">Related Tags</button>
+			<button type="button" class="btn btn-outline-primary">Somewhat Related Tags</button>
+			<button type="button" class="btn btn-outline-primary">Marginally Related Tags</button>
+		</div>
+
+		<hr class="featurette-divider">
+
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-sm-12">
+		<div class="collapse" id="collapseExample">
+		  	<div class="well">
+				{% for tag in tags %}
+					| <a href="{% url 'issuesite:claim' %}?q={{ tag.title }}">
+						{{ tag.title }}
+					</a> | 
+				{% endfor %}
+		  	</div>
+		  
+		</div>
+	</div>
+	<hr class="featurette-divider">
+</div>
+
+<div class="row">
+	<div class="col-sm-12">
+		<h2 class="section text-center">Claim</h2>
+	</div>
+	<div class="col-sm-12">
+		<h2> {{ claim.title | safe }} </h2>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-sm-12">
+	 	{{ claim.description | safe }} 
+	</div>
+</div>
+
+<!-- Arguments -->
+
+
+{% if arguments_for_list or arguments_against_list %}
+
+<div class="row">
+	<div class="col-sm-12">
+	 	<h2 class="section text-center"> Arguments </h2>
+	</div>
+</div>
+<div class="row">
+	<div class="col-sm-12 col-md-6">
+	 	<h3 class="text-center">For</h3>
+	</div>
+	<div class="col-sm-12 col-md-6">
+	 	<h3 class="text-center">Against</h3>
+	</div>
+</div>
+<div class="row">
+	<div class="col-sm-12 col-md-6">
+	    <div class='list-group'>
+	    {% for argument in arguments_for_list %}
+	        <a target="_blank" class='list-group-item list-group-item-action' style="display: block" href="{% url 'issuesite:argumentDetail' issueID=issue.key.id claimID=claim.key.id argumentID=argument.key.id %}">
+	        <!-- <button id='myButton' type="button" class="btn btn-primary btn-clipboard"" data-toggle="modal" data-target="#myModal">Tags</button> -->
+	        	<div class='row'>
+	        		<div class="col-sm-12">
+	        			<h3>{{ argument.title | truncatechars:100}}</h3>
+	        		</div>
+	        	</div>
+	        	<div class='row'>
+	        		<div class="col-sm-12">
+	        			<p> {{ argument.description | safe | truncatechars:300}} </p>
+	        		</div>
+	        	</div>
+	        </a>
+	    {% endfor %}
+	    </div>
+	</div>
+	<div class="col-sm-12 col-md-6">
+	    <div class='list-group'>
+	    {% for argument in arguments_against_list %}
+	        <a target="_blank" class='list-group-item list-group-item-action' style="display: block" href="{% url 'issuesite:argumentDetail' issueID=issue.key.id claimID=claim.key.id argumentID=argument.key.id %}">
+	        <!-- <button id='myButton' type="button" class="btn btn-primary btn-clipboard"" data-toggle="modal" data-target="#myModal">Tags</button> -->
+	        	<div class='row'>
+	        		<div class="col-sm-12">
+	        			<h3>{{ argument.title | truncatechars:100}}</h3>
+	        		</div>
+	        	</div>
+	        	<div class='row'>
+	        		<div class="col-sm-12">
+	        			<p> {{ argument.description | safe | truncatechars:300}} </p>
+	        		</div>
+	        	</div>
+	        </a>
+	    {% endfor %}
+	    </div>
+	</div>
+</div>
+
+{% else %}
+
+<div class="row">
+	<div class="col-sm-12">
+	 	<h2 class="section text-center"> Arguments </h2>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-sm-12">
+	 	<p>There are currently no arguments for or against this claim. Please go to Edit Claim to add some arguments.</p>
+	</div>
+</div>
+
+
+{% endif %}	
+
+{% endblock content %}
+
+{% block scripts %}
+	<script>
+		var menuid = "navbar-issues";
+		$(function() {
+		    $('#' + menuid).addClass("active");
+		});
+	</script>
+{% endblock scripts %}

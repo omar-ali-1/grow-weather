@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+
+{% block content %}
+
+
+	<div class='row'>
+		<div class='col-sm-0 col-sm-0 col-md-1'></div>
+			<div class='col-sm-12 col-sm-12 col-md-10'> 
+				<form action="{% url 'sourcebasesite:source' %}" method="get">
+					<div class="input-group">
+					  <input type="text" name="q" id="q" class="form-control search" aria-label="..." value="{{ q }}" placeholder="Search sources">
+					  <div class="input-group-btn">
+					    <!-- Button and dropdown menu -->
+					    
+						<div class="btn-group">
+						  <button type="button submit" class="btn btn-success"><i class="fas fa-search"></i></button>
+						  <button type="button" class="btn btn-success" data-toggle="modal" id="add-source" data-target="#addSourceModal" href="#" aria-haspopup="true" aria-expanded="false">
+						    <i class="fas fa-plus"></i>
+						  </button>
+						</div>
+					  </div>
+					</div>
+				</form>
+				<hr class="featurette-divider">
+			</div>
+		<div class='col-sm-0 col-sm-0 col-md-1'></div>
+	</div>
+<!--
+<div>
+	<script>
+	  (function() {
+	    var cx = '007461978161849511429:fcc3xfk2cdc';
+	    var gcse = document.createElement('script');
+	    gcse.type = 'text/javascript';
+	    gcse.async = true;
+	    gcse.src = 'https://cse.google.com/cse.js?cx=' + cx;
+	    var s = document.getElementsByTagName('script')[0];
+	    s.parentNode.insertBefore(gcse, s);
+	  })();
+	</script>
+	<gcse:search></gcse:search>
+</div>
+-->
+
+
+
+	<!-- Modal -->
+	<div class="modal fade" id="addSourceModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+	  <div class="modal-dialog" role="document">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-dismiss="modal" aria-label="Cancel"><i class="fas fa-times"></i></button>
+	        <h4 class="modal-title" id="myModalLabel">Add a new source</h4>
+	      </div>
+	      <form id="new-source-form" action="{% url 'sourcebasesite:newSource' %}" method="post">
+	      <div class="modal-body">
+				{% csrf_token %}
+				<div class="form-group">
+					<label for="title"> Choose a title: </label>
+	    			<input type="text" class="form-control" name="title" id="new_source_title" />
+	    			<label for="description"> Add details: </label>
+	    			<textarea class="form-control" rows="5" name="description" id="new_source_textarea"></textarea>
+	    			<div id='source-message'></div>
+				</div>
+	      </div>
+	      <div class="modal-footer">
+	      	<div class="" id="spinner-container"style="position: relative;"></div>
+	        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+	        <button type="button submit" id="submit-new-source" class="btn btn-outline-primary">Continue</button>
+	      </div>
+	      </form>
+	    </div>
+	  </div>
+	</div>
+	<!-- end Modal -->
+
+
+	<div class='row'>
+		<div class='col-sm-0 col-sm-0 col-md-1'></div>
+
+		<div class='col-sm-12 col-sm-12 col-md-10'>
+		{% if source_list %}
+		    <div class='list-group'>
+		    {% for source in source_list %}
+		        <a target="_blank" class='list-group-item list-group-item-action' style="display: block" href="{% url 'sourcebasesite:sourceDetail' source.key.id %}">
+		        <!-- <button id='myButton' type="button" class="btn btn-success btn-clipboard"" data-toggle="modal" data-target="#myModal">Tags</button> -->
+		        	<div class='row'>
+		        		<div class="col-sm-12">
+		        			<h3>{{ source.title | truncatechars:100}}</h3>
+		        		</div>
+		        	</div>
+		        	<div class='row'>
+		        		<div class="col-sm-12">
+		        			<p> {{ source.description | safe | truncatechars:300}} </p>
+		        		</div>
+		        	</div>
+		        	{% if source.author %}
+			        	<div class='row'>
+			        		<div class="col-sm-12">
+			        			<p> Created by {{ source.author.0 | safe | truncatechars:300}}. </p>
+			        		</div>
+			        	</div>
+		        	{% endif %}
+		        </a>
+		    {% endfor %}
+		    </div>
+		<div class='row'>
+			<div class='col-lg-6'>
+				<nav aria-label="Page navigation example">
+				  <ul class="pagination">
+				    <li class="page-item {{enable_previous}}"><a class="page-link" href="{% url 'sourcebasesite:source' %}?cursor={{previous_cursor}}">Previous</a></li>
+				    <li class="page-item {{enable_next}} "><a class="page-link" href="{% url 'sourcebasesite:source' %}?cursor={{next_cursor}}">Next</a></li>
+				  </ul>
+				</nav>
+			</div>
+		</div>
+		{% else %}
+		    <p>No sources are available.</p>
+		{% endif %}
+		</div>
+
+		<div class='col-sm-0 col-sm-0 col-md-1'></div>
+	</div>
+
+		<!-- </div> /.row -->
+{% endblock content %}
+
+
+
+
+
+
+{% block scripts %}
+	<script id="dropdown" language="text">
+	<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Dropdown <span class="caret"></span></a>
+	<ul class="dropdown-menu">
+	  <li><a href="#">Action</a></li>
+	  <li><a href="#">Another action</a></li>
+	  <li><a href="#">Something else here</a></li>
+	  <li role="separator" class="divider"></li>
+	  <li class="dropdown-header">Nav header</li>
+	  <li><a href="#">Separated link</a></li>
+	  <li><a href="#">One more separated link</a></li>
+	</ul>
+	</script>
+	<!-- <script type="text/javascript">
+		console.log("removed");
+		$('.list-group-item .list-group .list-group-item-action a button').on("click", "#myButton", function(e){
+	        e.stopPropagation();
+	        alert('button'); //only when button clicked
+	    });
+	</script> -->
+	<script src="{% static 'sourcebasesite/js/source_page_script.js' %}"></script>
+	<script async src="{% static 'issuesite/js/loader.js' %}"></script>
+
+	<script>
+		var menuid = "navbar-source";
+		$(function() {
+		    $('#' + menuid).addClass("active");
+		});
+
+///////////////////////////////////////////////////////////
+
+			function addsource(data) {
+				try {
+					appUser.getIdToken().then(function(idToken) {
+						$.ajax({
+						    url: $( "#new-source-form" ).attr("action"),
+						    type: 'post',
+						    data: data,
+						    headers: {
+						        'Authorization': 'Bearer ' + idToken
+						    },
+						    dataType: 'json',
+							beforeSend: function() {
+								$('#submit-new-source').attr('disabled', 'disabled');
+								$('#source-message').hide();
+								$('#loader').show();
+								addSpinner($('#spinner-container'));
+							},
+							complete: function(){
+								$('#submit-new-source').removeAttr('disabled', 'disabled');
+								$('#loader').hide();
+								removeSpinner($('#spinner-container'));
+
+							},
+						    success: function (data) {
+						        console.info(data);
+						        link = '/source/' + data['link'] + '/'
+						        if (data['status'] == 'exists') {
+						        	$('#source-message').html("This <a target=\"_blank\" href=\"" + link + "\">Source</a> already exists.");
+						        } else {
+						        	$('#source-message').html("<a target=\"_blank\" href=\"" + link + "\">Source</a> has been created.");
+						        	// document.getElementById("#new-source-form").reset();
+						        };
+								$('#source-message').show();
+						    },
+						    error: function(request, status, errorThrown) {
+						    	$('#source-message').html(errorThrown);
+						    	$('#source-message').show();
+						    }
+						});
+		            });
+				}
+				catch(err) {
+					if (err == "TypeError: Cannot read property 'getIdToken' of null") {
+						$('#source-message').html("Please sign in before adding an source.");
+					} else {
+						$('#source-message').html("Sorry, an error occured while processing your request.");
+					}
+					$('#source-message').show();
+				}
+
+
+			}
+$( "#new-source-form" ).on( "submit", function( event ) {
+  event.preventDefault();
+  var data = $( this ).serialize();
+  if ($("#new_source_title").val() != '') {
+  	addsource(data);
+  } else {
+	$('#source-message').html('Please add a title first!');
+	$('#source-message').show();
+  };
+  
+
+});
+	</script>
+
+{% endblock scripts %}
+

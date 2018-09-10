@@ -1,0 +1,47 @@
+{% load static %}
+
+  <html>
+    <head>
+		<link href="{% static 'sourcebasesite/taggle.js-1.11.1/example/css/taggle.css' %}" rel="stylesheet">
+		<link href="{% static 'sourcebasesite/taggle.js-1.11.1/example/css/projects.min.css' %}" rel="stylesheet">
+		<link href="{% static 'sourcebasesite/taggle.js-1.11.1/example/css/twilight.css' %}" rel="stylesheet">
+    </head>
+
+  <body>
+    <form id="form1" action="http://127.0.0.1:5000/post">
+        <div id ="freeTags" class="textarea input"></div>
+    </form>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+	<script src="{% static 'sourcebasesite/taggle.js-1.11.1/src/taggle.js' %}"></script>
+    <script>
+    var text = document.getElementById('tag');
+    new Taggle('freeTags');
+    </script>
+  </body>
+</html>
+
+
+
+
+<!-- 
+
+
+<link href="{% static 'sourcebasesite/taggle.js-1.11.1/example/css/taggle.css' %}" rel="stylesheet">
+<link href="{% static 'sourcebasesite/taggle.js-1.11.1/example/css/projects.min.css' %}" rel="stylesheet">
+<link href="{% static 'sourcebasesite/taggle.js-1.11.1/example/css/twilight.css' %}" rel="stylesheet">
+Hello
+
+
+<div id="example1"></div>
+
+
+
+<link href="{% static 'sourcebasesite/css/style.css' %}?version=1" rel="stylesheet">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script src="{% static 'sourcebasesite/taggle.js-1.11.1/src/taggle.js' %}"></script>
+
+<script type="text/javascript">
+	new Taggle('example1');
+</script>
+
+ -->

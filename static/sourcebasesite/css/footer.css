@@ -1,0 +1,41 @@
+.footer-area-1 {
+    background-color: #2E3436
+}
+
+.footer-area-2 {
+    background-color: #222728
+}
+
+.footer--dark {
+    color: #fff;
+}
+
+.footer-container-1 {
+    border-bottom: 1px solid #e6e9eb;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-color: rgb(230, 233, 235);
+    max-width: 90%;
+    margin: auto;
+}
+
+.footer-container-2 {
+    max-width: 90%;
+    margin: auto;
+}
+
+footer {
+  font-size: 1rem;
+}
+
+@media (min-width: 992px) {
+  footer {
+    font-size: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  /* Navbar positioning foo */
+  .navbar-wrapper {
+    margin-top: 20px;
+  }

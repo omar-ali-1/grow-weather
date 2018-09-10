@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block headscripts %}
+    <script>
+      tinymce.init({
+        selector: 'edittitle',
+        inline: true,
+        toolbar: 'undo redo',
+        menubar: false,
+        branding: false
+      });
+      tinymce.init({
+        image_dimensions: false,
+               image_class_list: [
+                  {title: 'Responsive', value: 'img-responsive'}
+              ],
+        selector: '#edit_source_textarea',
+        branding: false,
+        height: 500,
+        plugins: [
+          'advlist autolink lists link image charmap print preview hr anchor pagebreak',
+          'searchreplace wordcount visualblocks visualchars code fullscreen',
+          'insertdatetime media nonbreaking save table contextmenu directionality',
+          'emoticons template paste textcolor colorpicker textpattern imagetools codesample toc'
+        ],
+        toolbar1: 'undo redo | insert | fontselect | fontsizeselect | styleselect | bold italic | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image',
+        toolbar2: 'print preview media | forecolor backcolor emoticons | codesample',
+        image_advtab: true,
+        templates: [
+          { title: 'Test template 1', content: 'Test 1' },
+          { title: 'Test template 2', content: 'Test 2' }
+        ],
+        content_css: [
+          '//fonts.googleapis.com/css?family=Lato:300,300i,400,400i',
+          '//www.tinymce.com/css/codepen.min.css'
+        ]
+      });
+    </script>
+{% endblock headscripts %}
+
+
+{% block content %}
+
+
+{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+
+<form action="{% url 'sourcebasesite:saveSource' source.key.id %}" method="post">
+
+	{% csrf_token %}
+
+	<div class="row">
+		<div class="col-sm-12">
+			<button class="btn btn-success" data-toggle="collapse" href="#collapseExample" aria-expanded="false" aria-controls="collapseExample">
+				Tags <i class="fas fa-caret-down"></i>
+			</button>
+			<hr class="featurette-divider">
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-sm-12">
+			<div class="collapse" id="collapseExample">
+	            <div class="well">
+		            <div class="row">
+		            	<div class="col-sm-10">
+			            	<h5>Topics related to this source.</h5>
+			           	</div>
+			        </div>
+		            <div  id="edit_source_taggle" class="textarea input clearfix example1"></div>
+	            <div class="row">
+	            	<div class="col-sm-4">
+		            	<button type="submit" class="btn btn-primary">Save</button>
+		           	</div>
+		        </div>
+	        	</div>
+			  <hr class="featurette-divider">
+			</div>
+		</div>
+	</div>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+	<script src="{% static 'sourcebasesite/taggle.js-1.11.1/src/taggle.min.js' %}"></script>
+	<script>
+		var taggle = new Taggle('edit_source_taggle', {
+    		tags: {{ tags|safe }},
+    		additionalTagClasses: 'btn btn-danger',
+		});
+	</script>
+
+<!-- TODO handle url changes when title is changed. link with old title should redirect to new link with new 
+	title. but old title should become open to be a title for different source. so use title in url but include
+	random non-repeating numbers as well to make url unique.-->
+
+<!-- 
+
+
+	<script type="Javascript">
+		var edit_source_taggle = new Taggle('edit_source_taggle');
+		var tags = "{{tags}}"
+		console.log(tags)
+		for (var i = 0; i < tags.length; i++) {
+			edit_source_taggle.add(tags[i].title);
+		}
+	</script>
+
+ -->
+	<div class="form-group">
+
+		<div class="row">
+			<div class="col-sm-12">
+				<div class="input-group" id="input-issue">
+					<input name="title" id="title" value="{{ source.title }}" class="form-control" autocomplete="off">
+					<div class="input-group-btn">
+					<!-- Button and dropdown menu -->
+
+					<div class="btn-group">
+						<button class="btn btn-success" data-toggle="collapse" href="#collapseExample" aria-expanded="false" aria-controls="collapseExample">
+							<i class="fas fa-tags fa-sm"></i>
+						</button>
+						<button type="submit" class="btn btn-success">
+							<i class="far fa-save"></i>
+						</button>
+					</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	    
+		<br>
+		<div id="firepad"></div>
+
+	    <div class="row">
+	    	<div class="col-sm-12">
+	    		<textarea class="form-control" rows="5" name="description" id="edit_source_textarea" >{{ source.description }}
+	    		</textarea>
+	    	</div>
+	    	
+	    </div>
+
+	    <br /> 
+	    <div class="row">
+			<div class='col-sm-12 col-sm-12 col-md-12' style="margin-top: 0.5em;">
+	  			<button type="submit" class="btn btn-primary">Save</button>
+			</div>
+		</div>
+	</div>
+</form>
+
+
+{% endblock content %}
+
+
+{% block scripts %}
+	<script>
+		var menuid = "navbar-source";
+		$(function() {
+		    $('#' + menuid).addClass("active");
+		});
+	</script>
+
+{% endblock scripts %}

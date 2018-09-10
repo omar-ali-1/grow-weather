@@ -1,0 +1,30 @@
+-------------------------------------------------------
+
+Handling Edit Conflicts:
+
+Goals:
+
+- The algorithm should allow for simultaneous editing in order to avoid edit conflicts, which may be tedious and inconvenient to resolve. They also may introduce inefficiency if two people happen to add similar content simultaneously, which would constitute a waste of either or both of their efforts to some degree. 
+- The algorithm should be cost efficient. Using an ajax simultaneous editor like Firepad or Etherpad for all edits, especially when only one person is editing a document, will be highly inefficient and unnecessarily costly, and that will be true for the vast majority of edits taking place. So the goal of allowing for simultaneity should be combined with cost efficiency in a seamless way, even though this might complicate things a bit.
+
+Methods (algorithm) of Achieving Goals:
+
+Solution 1:
+- If someone initiates an edit of a document currently not being edited, the document opens up in a normal non-ajax editor. As long as this is true, the person can edit the document and then submit the edit for review or publishing in the regular way via POST request. 
+
+- If someone initiates an edit of a document currently being edited, the document opens up in an ajax editor wherein the document contents and changes can be seen in real-time by the new editor and people currently editing the document.
+  The problem is that the first person would have necessarily opened the document in a normal editor, while we need them to be on a simultaneous ajax editor as soon as other people join in editing the document. 
+  How do we solve this problem? Through ajax. 
+1. We keep track of whether a document is being currently edited in the normal way by storing their device's identity in memory. 
+2. When a new person (Person B) clicks to edit this document, we first check if the person currently editing in the normal way is still editing via ajax. If not, we open a normal editor for person B. If yes, we switch the person (Person A) currently editing it to a simultaneous editor by pushing this information to A's browser, where a javascript function is listening for this event. When the command is pushed, javascript functions take the content currently present in A's editing text area, constructs an instance of a simultaneous editor using this input as initial content, waits until this input process is finihsed, switches the person A to the simultaneous editor by manipulating the page via javascript, then sends an ajax request to the backend telling it it can now open the editor for person B.
+3. Now A and B are both editing the document and can see each other as editors and can see each other's changes in real-time.
+4. If there are three people or more editing at once, and one leaves, there's no big problem. The remaining two or more people can still be editing the document in the simultaneous editor instance, as they should be.
+5. If there are two people left editing, and one decides to leave, the remaining person continues editing the simultaneous document until he/she submits the changes for publishing.
+
+-------------------------------------------------------
+
+Handling Edit - Review - Publish Flow:
+
+For any given document that is being edited at a given moment, it will be in edit mode in either a firepad or the regular text editor, depending on number of editors. 
+
+Add note area associated with each person and each document so they can keep their edits temporarily while finalizing them.

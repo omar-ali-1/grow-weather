@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+
+{% block content %}
+
+
+{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+
+<form action="{% url 'issuesite:saveArgument' issueID=issue.key.id claimID=claim.key.id argumentID=argument.key.id %}" method="post">
+
+	{% csrf_token %}
+
+	<div class="row">
+		<div class="col-sm-12">
+			<a class="btn btn-outline-primary" role="button" data-toggle="collapse" href="#collapseExample" aria-expanded="false" aria-controls="collapseExample">
+			  	Tags <span class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span>
+			</a>
+			<hr class="featurette-divider">
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-sm-12">
+			<div class="collapse" id="collapseExample">
+	            <div class="well">
+		            <div class="row">
+		            	<div class="col-sm-10">
+			            	<h5>Topics related to this claim.</h5>
+			           	</div>
+			        </div>
+		            <div  id="edit_argument_taggle" class="textarea input clearfix example1"></div>
+	            <div class="row">
+	            	<div class="col-sm-4">
+		            	<button type="submit" class="btn btn-outline-primary">Save</button>
+		           	</div>
+		        </div>
+	        	</div>
+			  <hr class="featurette-divider">
+			</div>
+		</div>
+	</div>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+	<script src="{% static 'sourcebasesite/taggle.js-1.11.1/src/taggle.min.js' %}"></script>
+	<script>
+		new Taggle('edit_argument_taggle', {
+    tags: {{ tags|safe }}
+});
+	</script>
+
+
+
+<!-- 
+	<script type="Javascript">
+		var edit_source_taggle = new Taggle('edit_source_taggle');
+		var tags = "{{tags}}"
+		console.log(tags)
+		for (var i = 0; i < tags.length; i++) {
+			edit_source_taggle.add(tags[i].title);
+		}
+	</script>
+ -->
+
+
+ <!-- Title and Description Form --> 
+	<div class="form-group">
+
+		<div class="form-group">
+		  <label for="usr"><h3>Title:</h3></label>
+		  <input name="title" id="title" value="{{ argument.title }}" class="form-control">
+		</div>
+	    
+	    <div class="row">
+	    	<div class="col-sm-12">
+	    		<textarea class="form-control" rows="5" name="description" id="mytextarea" >{{ argument.description }}
+	    		</textarea>
+	    	</div>
+	    	
+	    </div>
+
+	    <br />
+
+	    <div class="row">
+			<div class='col-sm-12 col-sm-12 col-md-12'>
+	  			<button type="submit" class="btn btn-outline-primary">Save</button>
+			</div>
+		</div>
+	</div>
+</form>
+
+
+
+{% endblock content %}
+
+{% block scripts %}
+	<script>
+		var menuid = "navbar-issues";
+		$(function() {
+		    $('#' + menuid).addClass("active");
+		});
+	</script>
+
+	<script>
+		$('#submit').click( function (e) {
+		    if($("#my_group .active").val() === undefined) {
+		        
+		        e.preventDefault();
+		        window.alert('please select an option');
+		    }
+		    
+		});
+	</script>
+{% endblock scripts %}

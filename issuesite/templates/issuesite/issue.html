@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+
+{% block styles %}
+ <link rel="stylesheet" href="https://www.prefixy.io/prefixy.css">
+{% endblock styles %}
+
+
+{% block content %}
+
+
+
+<!-- <link href="{% static 'issuesite/css/loader.css' %}?version=1" rel="stylesheet"> -->
+<script async src="{% static 'issuesite/js/loader.js' %}"></script>
+	<div class='row'>
+		<div class='col-sm-0 col-sm-0 col-md-1'></div>
+			<div class='col-sm-12 col-sm-12 col-md-10'> 
+				<form id="issue-search" action="{% url 'issuesite:issue' %}" method="get">
+					<div class="input-group" id="input-issue">
+					  <input type="text" name="q" id="q" class="form-control search" aria-label="..." value="{{ q }}" placeholder="Search issues">
+					  <div class="input-group-btn">
+					    <!-- Button and dropdown menu -->
+					    
+						<div class="btn-group">
+						  <button type="button submit" class="btn btn-success"><i class="fas fa-search"></i></button>
+						  <button type="button" class="btn btn-success" data-toggle="modal" id="add-issue" data-target="#addIssueModal" href="#" aria-haspopup="true" aria-expanded="false">
+						    <i class="fas fa-plus"></i>
+						  </button>
+						</div>
+					  </div>
+					</div>
+				</form>
+				<hr class="featurette-divider">
+			</div>
+		<div class='col-sm-0 col-sm-0 col-md-1'></div>
+	</div>
+<!--
+<div>
+	<script>
+	  (function() {
+	    var cx = '007461978161849511429:fcc3xfk2cdc';
+	    var gcse = document.createElement('script');
+	    gcse.type = 'text/javascript';
+	    gcse.async = true;
+	    gcse.src = 'https://cse.google.com/cse.js?cx=' + cx;
+	    var s = document.getElementsByTagName('script')[0];
+	    s.parentNode.insertBefore(gcse, s);
+	  })();
+	</script>
+	<gcse:search></gcse:search>
+</div>
+-->
+
+
+
+	<!-- Modal -->
+	<div class="modal fade" id="addIssueModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+	  <div class="modal-dialog" role="document">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <button type="button" class="close" data-dismiss="modal" aria-label="Cancel"><i class="fas fa-times"></i></button>
+	        <h4 class="modal-title" id="myModalLabel">Add a new issue</h4>
+	      </div>
+	      <form id="new-issue-form" action="{% url 'issuesite:newIssue' %}" method="post">
+	      <div class="modal-body">
+				{% csrf_token %}
+				<div class="form-group">
+					<label for="title"> Choose a question/title: </label>
+	    			<input type="text" class="form-control" name="title" id="new_issue_title" />
+	    			<label for="description"> Choose a question/title: </label>
+	    			<textarea class="form-control" rows="5" name="description" id="new_issue_textarea"></textarea>
+	    		
+	    			<div id='issue-message'></div>
+				</div>
+	      </div>
+	      <div class="modal-footer">
+			<div class="" id="spinner-container"style="position: relative;"></div>
+	        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+	        <button type="button submit" id="submit-new-issue" class="btn btn-outline-primary">Continue</button>
+	      </div>
+	      </form>
+	    </div>
+	  </div>
+	</div>
+	<!-- end Modal -->
+
+
+	<div class='row'>
+		<div class='col-sm-0 col-sm-0 col-md-1'></div>
+
+		<div class='col-sm-12 col-sm-12 col-md-10'>
+		{% if issue_list %}
+		    <div class='list-group'>
+		    {% for issue in issue_list %}
+		        <a target="_blank" class='list-group-item list-group-item-action' style="display: block" href="{% url 'issuesite:issueDetail' issue.key.id %}">
+		        <!-- <button id='myButton' type="button" class="btn btn-success btn-clipboard"" data-toggle="modal" data-target="#myModal">Tags</button> -->
+		        	<div class='row'>
+		        		<div class="col-sm-12">
+		        			<h3>{{ issue.title | truncatechars:100}}</h3>
+		        		</div>
+		        	</div>
+		        	<div class='row'>
+		        		<div class="col-sm-12">
+		        			<p> {{ issue.description | safe | truncatechars:300}} </p>
+		        		</div>
+		        	</div>
+		        	{% if issue.author %}
+			        	<div class='row'>
+			        		<div class="col-sm-12">
+			        			<p> Created by {{ issue.author.0 | safe | truncatechars:300}}. </p>
+			        		</div>
+			        	</div>
+		        	{% endif %}
+		        </a>
+		    {% endfor %}
+		    </div>
+		<div class='row'>
+			<div class='col-lg-6'>
+				<nav aria-label="Page navigation example">
+				  <ul class="pagination">
+				    <li class="page-item {{enable_previous}}"><a class="page-link" href="{% url 'issuesite:issue' %}?cursor={{previous_cursor}}">Previous</a></li>
+				    <li class="page-item {{enable_next}} "><a class="page-link" href="{% url 'issuesite:issue' %}?cursor={{next_cursor}}">Next</a></li>
+				  </ul>
+				</nav>
+			</div>
+		</div>
+		{% else %}
+		    <p>No issues are available.</p>
+		{% endif %}
+		</div>
+
+		<div class='col-sm-0 col-sm-0 col-md-1'></div>
+	</div>
+
+		<!-- </div> /.row -->
+{% endblock content %}
+
+
+
+
+
+
+{% block scripts %}
+	<script id="dropdown" language="text">
+	<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Dropdown <span class="caret"></span></a>
+	<ul class="dropdown-menu">
+	  <li><a href="#">Action</a></li>
+	  <li><a href="#">Another action</a></li>
+	  <li><a href="#">Something else here</a></li>
+	  <li role="separator" class="divider"></li>
+	  <li class="dropdown-header">Nav header</li>
+	  <li><a href="#">Separated link</a></li>
+	  <li><a href="#">One more separated link</a></li>
+	</ul>
+	</script>
+	<!-- <script type="text/javascript">
+		console.log("removed");
+		$('.list-group-item .list-group .list-group-item-action a button').on("click", "#myButton", function(e){
+	        e.stopPropagation();
+	        alert('button'); //only when button clicked
+	    });
+	</script> -->
+	<script async src="{% static 'sourcebasesite/js/source_page_script.js' %}"></script>
+
+	<script async>
+		var menuid = "navbar-issues";
+		$(function() {
+		    $('#' + menuid).addClass("active");
+		});
+
+///////////////////////////////////////////////////////////
+
+			function addIssue(data) {
+				try {
+					appUser.getIdToken().then(function(idToken) {
+						$.ajax({
+						    url: $( "#new-issue-form" ).attr("action"),
+						    type: 'post',
+						    data: data,
+						    headers: {
+						        'Authorization': 'Bearer ' + idToken
+						    },
+						    dataType: 'json',
+							beforeSend: function() {
+								$('#submit-new-issue').attr('disabled', 'disabled');
+								$('#issue-message').hide();
+								$('#loader2').show();
+								$('#loader').show();
+								addSpinner($('#spinner-container'));
+							},
+							complete: function(){
+								$('#submit-new-issue').removeAttr('disabled', 'disabled');
+								$('#loader2').hide();
+								$('#loader').hide();
+								removeSpinner($('#spinner-container'));
+
+							},
+						    success: function (data) {
+						        console.info(data);
+						        link = '/issues/' + data['link'] + '/'
+						        if (data['status'] == 'exists') {
+						        	$('#issue-message').html("This <a target=\"_blank\" href=\"" + link + "\">issue</a> already exists.");
+						        } else {
+						        	$('#issue-message').html("<a target=\"_blank\" href=\"" + link + "\">Issue</a> has been created.");
+						        	// document.getElementById("#new-issue-form").reset();
+						        };
+								$('#issue-message').show();
+						    },
+						    error: function(request, status, errorThrown) {
+						    	$('#issue-message').html(errorThrown);
+						    	$('#issue-message').show();
+						    }
+						});
+		            });
+				}
+				catch(err) {
+					if (err == "TypeError: Cannot read property 'getIdToken' of null") {
+						$('#issue-message').html("Please sign in before adding an issue.");
+					} else {
+						$('#issue-message').html("Sorry, an error occured while processing your request.");
+					}
+					$('#issue-message').show();
+				}
+
+
+			}
+$( "#new-issue-form" ).on( "submit", function( event ) {
+  event.preventDefault();
+  var data = $( this ).serialize();
+  if ($("#new_issue_title").val() != '') {
+  	addIssue(data);
+  } else {
+	$('#issue-message').html('Please add a title first!');
+	$('#issue-message').show();
+  };
+  
+
+});
+	</script>
+
+<script async src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<!--<script src="https://www.prefixy.io/prefixy.js"></script>-->
+<script src="{% static 'issuesite/js/prefixy.min.js' %}"></script>
+<script>
+  var searchQuery = document.getElementById('q');
+  var issueSearchForm = document.getElementById('issue-search');
+
+  var myPrefixy = new Prefixy({
+    input: searchQuery,
+    form: issueSearchForm,
+    token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZW5hbnQiOiI3S1hNTGIiLCJpYXQiOjE1Mjg1ODIyNDd9.jrh3TKcEfO2t-aa9eliHnhDUl7WuLmhGIREqtwvngtA",
+    suggestionCount: 5,
+    minChars: 1,
+    delay: 50
+  });
+</script>
+
+
+{% endblock scripts %}
+
+
+
+
+<!-- 
+	Cards
+
+
+	<div class="row">
+		<div class="col-sm-6">
+			<div class="card" style="width: 20rem;">
+			  <img class="card-img-top" style="height: 180px; width: 100%; display: block;" src="{% static 'issueesite\pics\kitty.jpg' %}" alt="Card image cap">
+			  <div class="card-block">
+			    <h4 class="card-title">Card title</h4>
+			    <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+			    <a href="#" class="btn btn-success">Go somewhere</a>
+			  </div>
+			</div>
+		</div>
+		<div class="col-sm-6">
+			<div class="card" style="width: 20rem;">
+			  <img class="card-img-top" style="height: 180px; width: 100%; display: block;" src="{% static 'issueesite\pics\kitty.jpg' %}" alt="Card image cap">
+			  <div class="card-block">
+			    <h4 class="card-title">Card title</h4>
+			    <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+			    <a href="#" class="btn btn-success">Go somewhere</a>
+			  </div>
+			</div>
+
+		</div>
+	</div>
+
+-->
