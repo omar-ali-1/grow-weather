@@ -39,6 +39,7 @@ urlpatterns = [
     url(r'^ATriggerVerify.txt$', ATriggerVerify, name='ATriggerVerify'),
     url(r'^endpoints/updateUserSettings/$', updateUserSettings, name='updateUserSettings'),
     url(r'^endpoints/prepopulateFields/$', prepopulateFields, name='prepopulateFields'),
+    url(r'^endpoints/sendReport/$', sendReport, name='sendReport'),
     #url(r'^(?P<path>.*)$', 'django.views.static.serve', {
     #    'document_root': BASE_DIR,}),
 ]

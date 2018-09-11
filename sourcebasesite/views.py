@@ -150,28 +150,93 @@ def _getTimeZone(request, zipcode):
         return False
 
 
-def scheduleRreport(userID):
-    """Schedules a Celery task to send a reminder about this appointment"""
-
-    # Calculate the correct time to send this reminder
-    #report_time = arrow.get(datetime.datetime(2018, 9,11), user.timezone)
-    report_time = arrow.now()
-    reminder_time = report_time.replace(seconds=+5)
-
-    # Schedule the Celery task
-    from tasks import sendReport
-    result = sendReport.apply_async((userID,), eta=reminder_time)
-    #result = sendReport.apply_async((self.pk,), eta=report_time)
-
-    return result.id
+def sendReport(request, userID=None, receive_sms=None, receive_email=None):
+    """Send a reminder to a phone using Twilio SMS"""
+    # Get our appointment from the database
 
 
+    try:
+        user = User.query(User.userID==userID).fetch()
+    except e:
+        # The appointment we were trying to remind someone about
+        # has been deleted, so we don't need to do anything
+        return e
+
+    appointment_time = arrow.get(datetime(2018, 9, 11), user.timezone)
+    body = 'Hi {0}. You have an appointment coming up at {1}.'.format(
+        appointment.name,
+        appointment_time.format('h:mm a')
+    )
+
+    message = client.messages.create(
+        body=body,
+        to=user.phone,
+        from_=settings.TWILIO_NUMBER,
+    )
+
+
+def _updateReports(post, user):
+    try:
+        logging.info("we are hereeeee")
+
+        A_TRIGGER_KEY = '5185801497362639880'
+        A_TRIGGER_SECRET = 'eni6Ave8FH6473y9se1VM2hHdIQWtp'
+        updateReportsTask = False
+        userUpdated = False
+
+        receive_reports = post['check-receive-reports'] if 'check-receive-reports' in post else None
+        receive_sms = post['check-receive-sms'] if 'check-receive-sms' in post else None
+        receive_email = post['check-receive-email'] if 'check-receive-email' in post else None
+        
+
+        if receive_sms != user.receive_sms:
+            userUpdated = True
+            updateReportsTask = True
+            user.receive_sms = receive_sms
+
+        if receive_email != user.receive_email:
+            userUpdated = True
+            updateReportsTask = True
+            user.receive_email = receive_email
+
+        # None and change = used to receive reports, not anymore
+        # If receive_reports is None, we want to delete task and stop reports, but
+        # we don't want to keep sending delete requests every time user updates info with reports checkbox unchecked.
+        if user.receive_reports != receive_reports:
+            # If user saved settings with receive_reports on, we want to create task regardless of other changes.
+            updateReportsTask = True if receive_reports else False
+            userUpdated = True
+            user.receive_reports = receive_reports
+            if not receive_reports:
+                deleteURL = ('https://api.atrigger.com/v1/tasks/delete?key=' + 
+                A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + '&tag_userID=' + 
+                user.userID + '&tag_type=reports')
+                delete_response = requests.post(deleteURL)
+                logging.info("delete_response")
+
+        
+        if updateReportsTask and receive_reports:
+            deleteURL = ('https://api.atrigger.com/v1/tasks/delete?key=' + 
+            A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + '&tag_userID=' + 
+            user.userID + '&tag_type=reports')
+            delete_response = requests.post(deleteURL)
+            logging.info("delete_response")
+
+            triggerurl = ('https://api.atrigger.com/v1/tasks/create?key=' + 
+            A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + 
+            '&timeSlice=1minute&count=-1&url=https%3A%2F%2Fgrow-weather.appspot.com/' + 
+            'endpoints/sendReport?query=receive_email=' + (receive_email or 'None') + 
+            '%26receive_sms=' + (receive_sms or 'None') + '%26userID=' +
+            (user.userID or 'None') + '&tag_userID=' + user.userID + '&tag_type=reports')
+            r = requests.post(triggerurl)
+            logging.info(receive_reports)
+        return userUpdated
+
+    except Exception as e:
+        logging.info(e)
 
 
 def updateUserSettings(request):
-    '''
-    
-'''
     try:
         logging.info("======== We are here in updateUserSettings================")
         id_token = request.META['HTTP_AUTHORIZATION'].split(' ').pop()
@@ -184,43 +249,31 @@ def updateUserSettings(request):
         
         name = claims['name']
         email = claims['email']
-
-
         post = request.POST
-
+        user = _getUserObject(claims['sub'])
+        userUpdated = _updateReports(post, user)
 
         zipcode = post['input-zip'] if 'input-zip' in post else None
-
         timezone = _getTimeZone(request, zipcode)
         logging.info(timezone)
         #triggerurl = 'https://api.atrigger.com/v1/tasks/create?key=5185801497362639880&secret=eni6Ave8FH6473y9se1VM2hHdIQWtp&timeSlice=1day&count=-1&url=http%3A%2F%2Fgrow-weather.appspot.com/%2FmyTask%3Fquery%3Dsample&tag_type=testing'
-        triggerurl = ('https://api.atrigger.com/v1/tasks/create?key=' + 
-        '5185801497362639880&secret=eni6Ave8FH6473y9se1VM2hHdIQWtp&' + 
-        'timeSlice=1day&count=-1&url=https%3A%2F%2Fgrow-weather.appspot.com/' + 
-        '%2FmyTask%3Fquery%3Dsample&tag_type=testing')
-        r = requests.post(triggerurl).json()
-        logging.info(r)
+        
+        
         user.timezone = timezone
         if not timezone:
             return HttpResponse(json.dumps({'err': 'Invalid Zip Code.'}))
         phone = post['input-phone'] if 'input-phone' in post else None
-        receive_reports = post['check-receive-reports'] if 'check-receive-reports' in post else None
-        receive_sms = post['check-receive-sms'] if 'check-receive-sms' in post else None
-        receive_email = post['check-receive-email'] if 'check-receive-email' in post else None
+
+
         receive_rain = post['check-receive-rain'] if 'check-receive-rain' in post else None
+        #logging.info(requests.get)
 
-
-        logging.info(requests.get)
-
-        user = _getUserObject(claims['sub'])
+        
         user.name = name
         user.email = email
         user.zipcode = zipcode
         user.phone = phone
-        user.receive_reports = receive_reports
-        user.receive_email = receive_email
-        user.receive_sms = receive_sms
-        user.receive_rain = receive_rain
+
         user.put()
 
         '''if receive_reports == 'on':
