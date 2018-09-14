@@ -45,7 +45,17 @@ import google.oauth2.id_token
 import requests_toolbelt.adapters.appengine
 
 import datetime
+import re
 import requests
+#from celery import shared_task
+from django.conf import settings
+from twilio.rest import Client
+
+
+
+from models import *
+from datetime import datetime
+
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -55,8 +65,10 @@ requests_toolbelt.adapters.appengine.monkeypatch()
 HTTP_REQUEST = google.auth.transport.requests.Request()
 
 
-
-
+def _getClaims(request):
+    id_token = request.META['HTTP_AUTHORIZATION'].split(' ').pop()
+    return google.oauth2.id_token.verify_firebase_token(
+        id_token, HTTP_REQUEST)
 
 
 def home(request):
@@ -64,10 +76,7 @@ def home(request):
 
 
 def verifyOrCreateUser(request):
-    id_token = request.META['HTTP_AUTHORIZATION'].split(' ').pop()
-    #print id_token
-    claims = google.oauth2.id_token.verify_firebase_token(
-        id_token, HTTP_REQUEST)
+    claims = _getClaims(request)
     if not claims:
         return 'Unauthorized', 401
 
@@ -136,46 +145,60 @@ def signIn(request):
 def _getTimeZone(request, zipcode):
     #logging.info("get timezone")
     #logging.info(zipcode)
-    if zipcode:
-        TimeZoneURL = ('https://www.zipcodeapi.com/rest/P2XWrO6FkXTl2yfjS85Wl4kHJT' +
-        'XoyizlPOT1A6IjBWzWeFDWSXv3WMbOWrJ4VMMH/info.json/' + zipcode + '/degrees')
-        TZResponse = requests.get(TimeZoneURL).json()
-        #logging.info(TZResponse)
-        if 'error_msg' in TZResponse or len(zipcode) > len(TZResponse['zip_code']):
-            logging.info("length error")
-            return False
-        else:
-            return TZResponse['timezone']['timezone_identifier']
+    TimeZoneURL = ('https://www.zipcodeapi.com/rest/P2XWrO6FkXTl2yfjS85Wl4kHJT' +
+    'XoyizlPOT1A6IjBWzWeFDWSXv3WMbOWrJ4VMMH/info.json/' + zipcode + '/degrees')
+    TZResponse = requests.get(TimeZoneURL).json()
+    #logging.info(TZResponse)
+    # TODO handle error better
+    if 'error_msg' in TZResponse:
+        logging.info(TZResponse['error_msg'])
+        return 'err', TZResponse['error_msg']
+    # The timezone API simply ignores any chars beyond the 5th in zipcode, doesnt return err.
+    elif 'timezone' in TZResponse:
+        return '', TZResponse['timezone']['timezone_identifier']
     else:
-        return False
+        return 'err', 'Unknown error! Sorry!'
 
-
-def sendReport(request, userID=None, receive_sms=None, receive_email=None):
+def sendReport(request):
     """Send a reminder to a phone using Twilio SMS"""
     # Get our appointment from the database
-
-
     try:
-        user = User.query(User.userID==userID).fetch()
-    except e:
-        # The appointment we were trying to remind someone about
-        # has been deleted, so we don't need to do anything
-        return e
-
-    appointment_time = arrow.get(datetime(2018, 9, 11), user.timezone)
-    body = 'Hi {0}. You have an appointment coming up at {1}.'.format(
-        appointment.name,
-        appointment_time.format('h:mm a')
-    )
-
-    message = client.messages.create(
-        body=body,
-        to=user.phone,
-        from_=settings.TWILIO_NUMBER,
-    )
+        request = request.REQUEST
+        receive_email = request['receive_email']
+        receive_sms = request['receive_sms']
+        phone = request['phone']
+        email = request['email']
+        logging.info("======== We are here in sendReport===============")
+        # Uses credentials from the TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN
+        # environment variables
+        authToken = 'ace161d8b47b77ad5a729b10c02633f0'
+        accountSID = 'AC437de0c4319e3101f8a41972a7ed10fa'
+        twilioNumber = '+16292069621'
+        #twilioNumber = '+15005550006'
 
 
-def _updateReports(post, user):
+        client = Client(accountSID, authToken)
+        message = client.messages.create(
+            body="Hello Twilio World!!!!!",
+            # to='+1 615-592-5253',
+            to= '+' + phone,
+            from_=twilioNumber,
+        )
+
+        '''if receive_reports == 'on':
+            report_time = datetime.time(0,0,0)
+            logging.info('here')
+            logging.info(report_time)'''
+        #usertimeOffset = userZip.timezone
+        #user.send_time = datetime.time((8-userTimeOffset)%24)
+        
+        return HttpResponse(json.dumps({'status':'success'}))
+        
+    except Exception as e:
+        logging.info(e)
+
+
+def _updateReports(post, user, first=None):
     try:
         logging.info("we are hereeeee")
 
@@ -221,67 +244,83 @@ def _updateReports(post, user):
             user.userID + '&tag_type=reports')
             delete_response = requests.post(deleteURL)
             logging.info("delete_response")
-
+            # ab6c5aca.ngrok.io/
+            # grow-weather.appspot.com/
             triggerurl = ('https://api.atrigger.com/v1/tasks/create?key=' + 
             A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + 
-            '&timeSlice=1minute&count=-1&url=https%3A%2F%2Fgrow-weather.appspot.com/' + 
-            'endpoints/sendReport?query=receive_email=' + (receive_email or 'None') + 
-            '%26receive_sms=' + (receive_sms or 'None') + '%26userID=' +
-            (user.userID or 'None') + '&tag_userID=' + user.userID + '&tag_type=reports')
+            '&timeSlice=1day&count=-1&url=https%3A%2F%2Fab6c5aca.ngrok.io/' + 
+            'endpoints/sendReport/?receive_email=' + (receive_email or 'None') + 
+            '%26receive_sms=' + (receive_sms or 'None') + '%26phone=' + user.phone + 
+            '%26email=' + user.email + '%26userID=' + (user.userID or 'None') + 
+            '/&tag_userID=' + user.userID + '&tag_type=reports&first=' + (first or 'None'))
             r = requests.post(triggerurl)
-            logging.info(receive_reports)
+            logging.info(r.status)
         return userUpdated
 
     except Exception as e:
         logging.info(e)
 
 
+def _isValidPhoneNumber(phone):
+    try:
+        authToken = 'ace161d8b47b77ad5a729b10c02633f0'
+        accountSID = 'AC437de0c4319e3101f8a41972a7ed10fa'
+        client = Client(accountSID, authToken)
+        number = client.lookups.phone_numbers('+1' + phone).fetch()
+        return True
+    except:
+        return False
+
+
+def _updateBasicUserInfo(user, claims):
+    name = claims['name']
+    email = claims['email']
+    user.name = name
+    user.email = email
+
 def updateUserSettings(request):
     try:
-        logging.info("======== We are here in updateUserSettings================")
-        id_token = request.META['HTTP_AUTHORIZATION'].split(' ').pop()
-        claims = google.oauth2.id_token.verify_firebase_token(
-            id_token, HTTP_REQUEST)
+        #### User authentication and fetching ###
+        #logging.info("======== We are here in updateUserSettings================")
+        claims = _getClaims(request)
         if not claims:
             return 'Unauthorized', 401
-        # logging.info(claims)
-        # user = User.query(User.userID==claims['sub']).fetch()
-        
-        name = claims['name']
-        email = claims['email']
-        post = request.POST
         user = _getUserObject(claims['sub'])
-        userUpdated = _updateReports(post, user)
 
+        #### Request processing ###
+        post = request.POST
+        
+        # Validate zipcode input and update corresponding user property
         zipcode = post['input-zip'] if 'input-zip' in post else None
-        timezone = _getTimeZone(request, zipcode)
-        logging.info(timezone)
-        #triggerurl = 'https://api.atrigger.com/v1/tasks/create?key=5185801497362639880&secret=eni6Ave8FH6473y9se1VM2hHdIQWtp&timeSlice=1day&count=-1&url=http%3A%2F%2Fgrow-weather.appspot.com/%2FmyTask%3Fquery%3Dsample&tag_type=testing'
-        
-        
-        user.timezone = timezone
-        if not timezone:
-            return HttpResponse(json.dumps({'err': 'Invalid Zip Code.'}))
-        phone = post['input-phone'] if 'input-phone' in post else None
+        if not re.match(r"^[0-9]{5}(?:-[0-9]{4})?$", zipcode):
+            return HttpResponse(json.dumps({'err': "Invalid zipcode."}))
+        user.zipcode = zipcode
 
+        # Fetch timezone info for the zipcode if zipcode has changed, and update corresp. user property
+        timezone = _getTimeZone(request, zipcode) if zipcode != user.zipcode else ('', user.timezone)
+        #logging.info(timezone)
+        if timezone[0] == "err":
+            return HttpResponse(json.dumps({'err': timezone[1]}))
+        user.timezone = timezone[1]
+
+        # Validate phone input via Twilio API and update corresponding user property
+        phone = post['input-phone'] if 'input-phone' in post else None
+        if not _isValidPhoneNumber(phone):
+            return HttpResponse(json.dumps({'err': "Invalid US phone number. Valid Format: 1234567891"}))
+        user.phone = phone
+
+        # Update user's report settings, and scheduled task via A Trigger Scheduling API
+        _updateReports(post, user)
+
+        # Update user's basic info
+        _updateBasicUserInfo(user, claims)
+        
+        # Save updated user to Datastore
+        user.put()
 
         receive_rain = post['check-receive-rain'] if 'check-receive-rain' in post else None
         #logging.info(requests.get)
 
-        
-        user.name = name
-        user.email = email
-        user.zipcode = zipcode
-        user.phone = phone
-
-        user.put()
-
-        '''if receive_reports == 'on':
-            report_time = datetime.time(0,0,0)
-            logging.info('here')
-            logging.info(report_time)'''
-        #usertimeOffset = userZip.timezone
-        #user.send_time = datetime.time((8-userTimeOffset)%24)
         
         return HttpResponse(json.dumps({'status':'success'}))
         
@@ -295,9 +334,7 @@ def prepopulateFields(request):
 '''
     try:
         logging.info("======== We are here in updateUserSettings================")
-        id_token = request.META['HTTP_AUTHORIZATION'].split(' ').pop()
-        claims = google.oauth2.id_token.verify_firebase_token(
-            id_token, HTTP_REQUEST)
+        claims = _getClaims(request)
         if not claims:
             return 'Unauthorized', 401
         # logging.info(claims)

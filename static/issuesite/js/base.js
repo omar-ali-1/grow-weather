@@ -268,11 +268,13 @@ function updateUserSettings(data) {
         beforeSend: function() {
           $('#save-settings').attr('disabled', 'disabled');
           $('#update-message').html('');
+          $('#spinner-container').show();
           addSpinner($('#spinner-container'));
         },
         complete: function(){
           $('#save-settings').removeAttr('disabled', 'disabled');
           removeSpinner($('#spinner-container'));
+          $('#spinner-container').hide();
 
         },
         success: function (data) {
