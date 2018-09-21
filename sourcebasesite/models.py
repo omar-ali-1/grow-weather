@@ -9,8 +9,12 @@ from django.template.defaultfilters import slugify
 
 class Report(ndb.Model):
     """weather report model"""
-    temperature = ndb.IntegerProperty(repeated=True)
-    rain = ndb.BooleanProperty()
+    user = ndb.StringProperty()
+    datetime = ndb.DateTimeProperty()
+    temperature = ndb.IntegerProperty()
+    precipitation = ndb.IntegerProperty()
+    summary = ndb.StringProperty()
+    reportType = ndb.StringProperty()
 
 class User(ndb.Model):
     # User Info
@@ -20,6 +24,7 @@ class User(ndb.Model):
     phone = ndb.StringProperty()
     zipcode = ndb.StringProperty()
     timezone = ndb.StringProperty()
+    geoString = ndb.StringProperty()
     # User Settings
     receive_email = ndb.StringProperty()
     receive_sms = ndb.StringProperty()

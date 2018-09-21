@@ -305,8 +305,121 @@ function updateUserSettings(data) {
 
 };
 
+function resendReport(data) {
+  console.log("updateUserSettings");
+  console.log($( "#settings-form" ).attr("action"));
+  try {
+    resendURL = '/endpoints/resendReport/';
+    appUser.getIdToken().then(function(idToken) {
+      $.ajax({
+          url: resendURL,
+          type: 'get',
+          headers: {
+              'Authorization': 'Bearer ' + idToken
+              //'Cookie': 'csrftoken={{ csrf_token }}'
+          },
+          dataType: 'json',
+        beforeSend: function() {
+          $('#resend-report').attr('disabled', 'disabled');
+          $('#save-settings').attr('disabled', 'disabled');
+          $('#update-message').html('');
+          $('#spinner-container').show();
+          addSpinner($('#spinner-container'));
+        },
+        complete: function(){
+          $('#resend-report').removeAttr('disabled', 'disabled');
+          $('#save-settings').removeAttr('disabled', 'disabled');
+          removeSpinner($('#spinner-container'));
+          $('#spinner-container').hide();
+
+        },
+        success: function (data) {
+            //console.info(data);
+            if (data['err']) {
+              message = data['err'];
+              //console.info("in here");
+            } else {
+              message = 'Success!';
+            };
+        //console.info("over here");
+        $('#update-message').html(message);
+        $('#update-message').show();
+        },
+        error: function(request, status, errorThrown) {
+          //console.info("eroooor");
+          $('#issue-message').html(errorThrown);
+          $('#issue-message').show();
+        }
+      });
+          });
+  }
+  catch(err) {
+    $('#update-message').html(err);
+    $('#issue-message').show();
+  };
 
 
+};
+
+
+function getHistory(data) {
+  //console.log("updateUserSettings");
+  //console.log($( "#settings-form" ).attr("action"));
+  try {
+    resendURL = '/endpoints/getAlertHistory/';
+    appUser.getIdToken().then(function(idToken) {
+      $.ajax({
+          url: resendURL,
+          type: 'get',
+          headers: {
+              'Authorization': 'Bearer ' + idToken
+              //'Cookie': 'csrftoken={{ csrf_token }}'
+          },
+          dataType: 'json',
+        beforeSend: function() {
+          $('#resend-report').attr('disabled', 'disabled');
+          $('#save-settings').attr('disabled', 'disabled');
+          $('#update-message').html('');
+          $('#spinner-container').show();
+          addSpinner($('#spinner-container'));
+        },
+        complete: function(){
+          $('#resend-report').removeAttr('disabled', 'disabled');
+          $('#save-settings').removeAttr('disabled', 'disabled');
+          removeSpinner($('#spinner-container'));
+          $('#spinner-container').hide();
+
+        },
+        success: function (data) {
+            //console.info(data);
+            if (data['err']) {
+              message = data['err'];
+              //console.info("in here");
+            } else {
+              message = data['alerts'];
+            };
+        //console.info("over here");
+        $('#update-message').html(message);
+        $('#update-message').show();
+        },
+        error: function(request, status, errorThrown) {
+          //console.info("eroooor");
+          $('#issue-message').html(errorThrown);
+          $('#issue-message').show();
+        }
+      });
+          });
+  }
+  catch(err) {
+    $('#update-message').html(err);
+    $('#issue-message').show();
+  };
+
+
+};
+
+
+// Event Handlers
 
 $( "#settings-form" ).on( "submit", function( event ) {
   event.preventDefault();
@@ -316,6 +429,15 @@ $( "#settings-form" ).on( "submit", function( event ) {
   updateUserSettings(data);
 });
 
+
+$( "#resend-report" ).on( "click", function( event ) {
+  event.preventDefault();
+  //console.log(this);
+  //var data = $( this ).serialize();
+  //console.log(data);
+  //resendReport();
+  getHistory();
+});
 
 // TODO: afer login, the login modal does not reinitialize with its content, and stays empty. 
 // If signed in, and sign out is clicked, sign out is sucessful, but modal still isnt initialized, 
