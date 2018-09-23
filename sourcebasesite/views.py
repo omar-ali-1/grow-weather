@@ -155,9 +155,9 @@ def signIn(request):
 def _getGeoString(zipcode):
     try:
         # Google Maps API reverse geolocation using zipcode
-        gMapsKey = 'AIzaSyA7LKqVl3C-0Vr38bDUi5B52LU434MopPA'
+        GOOGLE_MAPS_KEY = Settings.get('GOOGLE_MAPS_KEY')
         getGeoLocURL = ('https://maps.googleapis.com/maps/api/geocode/' + 
-            'json?key=' + gMapsKey + '&address=' + zipcode)
+            'json?key=' + GOOGLE_MAPS_KEY + '&address=' + zipcode)
         geoResponse = requests.get(getGeoLocURL)
         location = geoResponse.json()['results'][0]['geometry']['location']
         return str(location['lat']) + ',' + str(location['lng'])
@@ -265,9 +265,10 @@ def _getPrecipProb(geoString):
     try:
 
         # Dark Weather API daily forecast
-        darkWKey = 'e1a069d73553d2e120bf253c6de506c6'
+        DARK_SKY_KEY = Settings.get('DARK_SKY_KEY')
+
         excludeList = 'currently,minutely,daily,alerts,flags'
-        getForecastURL = ('https://api.darksky.net/forecast/' + darkWKey + '/' + 
+        getForecastURL = ('https://api.darksky.net/forecast/' + DARK_SKY_KEY + '/' + 
         geoString + '?exclude=' + excludeList)
         forecastResponse = requests.get(getForecastURL)
         hourlyForecast = forecastResponse.json()['hourly']
@@ -285,9 +286,9 @@ def _getWeather(geoString):
     try:
 
         # Dark Weather API daily forecast
-        darkWKey = 'e1a069d73553d2e120bf253c6de506c6'
+        DARK_SKY_KEY = Settings.get('DARK_SKY_KEY')
         excludeList = 'currently,minutely,alerts,flags'
-        getForecastURL = ('https://api.darksky.net/forecast/' + darkWKey + '/' + 
+        getForecastURL = ('https://api.darksky.net/forecast/' + DARK_SKY_KEY + '/' + 
         geoString + '?exclude=' + excludeList)
         forecastResponse = requests.get(getForecastURL)
         #logging.info(forecastResponse.json())
@@ -348,9 +349,10 @@ def _sendMessage(userKey, body):
         user = userKey.get()
         if user.receive_sms:
             # Twilio info
-            authToken = 'ace161d8b47b77ad5a729b10c02633f0'
-            accountSID = 'AC437de0c4319e3101f8a41972a7ed10fa'
-            twilioNumber = '+16292069621'
+
+            authToken = Settings.get('TWILIO_AUTH_TOKEN')
+            accountSID = Settings.get('TWILIO_ACCOUNT_SID')
+            twilioNumber = Settings.get('TWILIO_ACCT_PHONE_NUMBER')
             #twilioNumber = '+15005550006'
 
 
@@ -420,10 +422,22 @@ def sendReport(request):
     """Send a reminder to a phone using Twilio SMS"""
     # Get our appointment from the database
     try:
+        '''
+        A_TRIGGER_KEY = Settings.get('A_TRIGGER_KEY')
+        A_TRIGGER_SECRET = Settings.get('A_TRIGGER_SECRET')
+
+        validateRequestIpURL = ('https://api.atrigger.com/v1/ipverify?key=' + 
+            A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + '&ip=127.0.0.1'
+        '''
 
         req = request.REQUEST
-        #logging.info('########## Request Data:')
-        #logging.info(request.__dict__)
+        # logging.info('########## Request Data:')
+        # logging.info(request)
+
+        # Additional security check to make sure task was created by this app. Payload is SSL-secured.
+        if Settings.get('A_TRIGGER_PAYLOAD_SECRET') != request.POST['A_TRIGGER_PAYLOAD_SECRET']:
+            return HttpResponse(error, status=401)
+
         userID = request.POST['userID']
         userKey = ndb.Key(User, userID)
         user = userKey.get()
@@ -489,8 +503,9 @@ def _updateATriggerTask(userKey):
     which sends weather reports to user at 8 am.
     '''
     try:
-        A_TRIGGER_KEY = '5185801497362639880'
-        A_TRIGGER_SECRET = 'eni6Ave8FH6473y9se1VM2hHdIQWtp'
+
+        A_TRIGGER_KEY = Settings.get('A_TRIGGER_KEY')
+        A_TRIGGER_SECRET = Settings.get('A_TRIGGER_SECRET')
         #user = User.query(User.key==userKey).fetch(projection=[User.receive_reports, User.timezone])[0]
         user = userKey.get()
         logging.info("++++++++++++ Update A Trgigger +++++++++++")
@@ -499,7 +514,8 @@ def _updateATriggerTask(userKey):
         if user.receive_reports:
 
             reportDatetime = _getReportDatetime(user.timezone)
-            domain = 'https%3A%2F%2Fgrow-weather.appspot.com' #'https%3A%2F%2Ffc2116ab.ngrok.io'
+            #domain = 'https%3A%2F%2Fgrow-weather.appspot.com'
+            domain = 'https%3A%2F%2Ffc2116ab.ngrok.io'
 
             addURL = ('https://api.atrigger.com/v1/tasks/create?key=' + 
             A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + 
@@ -508,7 +524,8 @@ def _updateATriggerTask(userKey):
             '&tag_ID=' + userKey.id() + '&tag_type=reports&first=' + '2018-09-14T12:46:47.260683-10:00' + '&post=True')
             
             #logging.info(triggerurl)
-            data = {'userID': userKey.id() or 'None'}
+            A_TRIGGER_PAYLOAD_SECRET = Settings.get('A_TRIGGER_PAYLOAD_SECRET')
+            data = {'userID': userKey.id() or 'None', 'A_TRIGGER_PAYLOAD_SECRET': A_TRIGGER_PAYLOAD_SECRET}
             #r = requests.post(addURL, data={'userID': user.userID or 'None'}, verify=True)
             addTaskResponse = requests.post(addURL, data=data, verify=True)
             

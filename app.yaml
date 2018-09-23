@@ -10,15 +10,19 @@ handlers:
   script: google.appengine.ext.deferred.deferred.application
   login: admin
 
+# In production, make sure to uncomment login:admin to secure cron job
+# Uncomment to call url from browser.
+- url: /endpoints/checkRainAndAlertUsers/
+  script: main.application
+  #login: admin
+
 - url: /static
   static_dir: static/
   application_readable: true
-  #login: admin
 
 - url: .*
   script: main.application
   secure: always
-  #login: admin
 
 builtins:
 - appstats: on
