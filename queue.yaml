@@ -1,0 +1,6 @@
+queue:
+- name: alerts-queue
+  rate: 5/s
+
+- name: ATrigger-queue
+  rate: 5/s

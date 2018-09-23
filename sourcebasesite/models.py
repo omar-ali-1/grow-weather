@@ -7,14 +7,7 @@ from google.appengine.ext import ndb
 from django.template.defaultfilters import slugify
 
 
-class Report(ndb.Model):
-    """weather report model"""
-    user = ndb.StringProperty()
-    datetime = ndb.DateTimeProperty()
-    temperature = ndb.IntegerProperty()
-    precipitation = ndb.IntegerProperty()
-    summary = ndb.StringProperty()
-    reportType = ndb.StringProperty()
+
 
 class User(ndb.Model):
     # User Info
@@ -30,12 +23,22 @@ class User(ndb.Model):
     receive_sms = ndb.StringProperty()
     receive_rain = ndb.StringProperty()
     receive_reports = ndb.StringProperty()
-    send_time = ndb.TimeProperty()
-    # User History
-    reports = ndb.KeyProperty(kind=Report, repeated=True)
 
 
+class Report(ndb.Model):
+    """weather report model"""
+    user = ndb.KeyProperty(kind=User)
+    datetime = ndb.DateTimeProperty()
+    dailyLow = ndb.IntegerProperty()
+    dailyHigh = ndb.IntegerProperty()
+    precipitation = ndb.IntegerProperty()
+    summary = ndb.StringProperty()
 
+class Alert(ndb.Model):
+    """weather report model"""
+    user = ndb.KeyProperty(kind=User)
+    datetime = ndb.DateTimeProperty()
+    precipitation = ndb.IntegerProperty()
 
 
 

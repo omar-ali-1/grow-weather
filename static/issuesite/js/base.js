@@ -18,16 +18,16 @@ function prepopulateFields(userIdToken, userID) {
       $('#input-phone').val(data['phone']);
     }
     if (data['receive_email'] && data['receive_email'] == 'on') {
-      $('#check-receive-email').prop('checked', true);;
+      $('#check-receive-email').prop('checked', true);
     }
     if (data['receive_sms'] && data['receive_sms'] == 'on') {
-      $('#check-receive-sms').prop('checked', true);;
+      $('#check-receive-sms').prop('checked', true);
     }
     if (data['receive_reports'] && data['receive_reports'] == 'on') {
-      $('#check-receive-reports').prop('checked', true);;
+      $('#check-receive-reports').prop('checked', true);
     }
     if (data['receive_rain'] && data['receive_rain'] == 'on') {
-      $('#check-receive-rain').prop('checked', true);;
+      $('#check-receive-rain').prop('checked', true);
     }
     $('#name').empty();
     // console.log(data);
@@ -77,7 +77,7 @@ $(function(){
         var name = user.displayName;
         user.getIdToken().then(function(idToken) {
           console.log(idToken);
-          prepopulateFields(idToken, user.uid);
+          //prepopulateFields(idToken, user.uid);
         });
         /* If the provider gives a display name, use the name for the
         personal welcome message. Otherwise, use the user's email. */
@@ -214,20 +214,6 @@ $(function(){
   }
   // [END configureFirebaseLoginWidget]
 
-  // [START signOutBtn]
-  // Sign out a user
-  var signOutBtn =$('#sign-out');
-  signOutBtn.click(function(event) {
-    event.preventDefault();
-
-    firebase.auth().signOut().then(function() {
-      // console.log("Sign out successful");
-    }, function(error) {
-      // console.log(error);
-    });
-  });
-  // [END signOutBtn]
-  //console.log(userIdToken);
 
   configureFirebaseLogin();
   configureFirebaseLoginWidget();
@@ -242,8 +228,27 @@ $(function(){
     event.preventDefault();
     $('.navbar-toggler').click();
     firebase.auth().signOut().then(function() {
-      console.log("Sign out successful");
+      console.log("Sign out successfullllll");
+      $('#input-zip').val('');
+  
+  
+      $('#input-phone').val('');
+  
+  
+      $('#check-receive-email').prop('checked', false);
+  
+  
+      $('#check-receive-sms').prop('checked', false);
+  
+  
+      $('#check-receive-reports').prop('checked', false);
+  
+  
+      $('#check-receive-rain').prop('checked', false);
+  
+      $('#name').empty();
       configureFirebaseLoginWidget();
+
     }, function(error) {
       console.log(error);
     });
@@ -252,8 +257,8 @@ $(function(){
 
 
 
-function updateUserSettings(data) {
-  console.log("updateUserSettings");
+function updateUser(data) {
+  console.log("updateUser");
   console.log($( "#settings-form" ).attr("action"));
   try {
     appUser.getIdToken().then(function(idToken) {
@@ -426,7 +431,7 @@ $( "#settings-form" ).on( "submit", function( event ) {
   console.log(this);
   var data = $( this ).serialize();
   console.log(data);
-  updateUserSettings(data);
+  updateUser(data);
 });
 
 

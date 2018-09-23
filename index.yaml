@@ -10,6 +10,12 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
+- kind: Alert
+  properties:
+  - name: user
+  - name: datetime
+    direction: desc
+
 - kind: Report
   properties:
   - name: reportType
@@ -29,3 +35,14 @@ indexes:
   - name: user
   - name: datetime
     direction: desc
+
+- kind: User
+  properties:
+  - name: __key__
+  - name: receive_reports
+
+- kind: User
+  properties:
+  - name: __key__
+  - name: receive_reports
+  - name: timezone

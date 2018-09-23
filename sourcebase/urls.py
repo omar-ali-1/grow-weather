@@ -37,7 +37,7 @@ urlpatterns = [
     url(r'^verifyOrCreateUser/$', verifyOrCreateUser, name='verifyOrCreateUser'),
     # Serve text file used by scheduling server to verify this server
     url(r'^ATriggerVerify.txt$', ATriggerVerify, name='ATriggerVerify'),
-    url(r'^endpoints/updateUserSettings/$', updateUserSettings, name='updateUserSettings'),
+    url(r'^endpoints/updateUser/$', updateUser, name='updateUser'),
     url(r'^endpoints/sendReport/$', sendReport, name='sendReport'),
     url(r'^endpoints/resendReport/$', resendReport, name='resendReport'),
     url(r'^endpoints/prepopulateFields/$', prepopulateFields, name='prepopulateFields'),
