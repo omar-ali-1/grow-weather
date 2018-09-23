@@ -41,7 +41,8 @@ class Alert(ndb.Model):
     precipitation = ndb.IntegerProperty()
 
 
-
+# TODO future: use Google Key Management Service
+# Taken from Martin Omander's answer here https://stackoverflow.com/questions/21393107/python-and-yaml-gae-app-settings-file
 class Settings(ndb.Model):
   name = ndb.StringProperty()
   value = ndb.StringProperty()
@@ -64,26 +65,3 @@ class Settings(ndb.Model):
 
 
 
-
-        
-
-class Source(ndb.Model):
-    """Profile -- User profile object"""
-    title = ndb.StringProperty(required=True)
-    description = ndb.TextProperty()
-    author = ndb.TextProperty(repeated=True)
-    slug = ndb.ComputedProperty(lambda self: slugify(self.title))
-    #id = ndb.ComputedProperty(lambda self: self.slug)
-# Create your models here.
-class Tag(ndb.Model):
-    """Profile -- User profile object"""
-    title = ndb.StringProperty(required=True)
-    description = ndb.StringProperty()
-    slug = ndb.ComputedProperty(lambda self: slugify(self.title))
-
-class SourceTagRel(ndb.Model):
-    source = ndb.KeyProperty(kind=Source,
-                                   required=True)
-    tag = ndb.KeyProperty(kind=Tag,
-                                   required=True)
-    relation = ndb.TextProperty()

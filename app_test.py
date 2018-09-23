@@ -17,7 +17,16 @@ import unittest
 
 from google.appengine.api import memcache
 from google.appengine.ext import ndb
+from google.appengine.api import mail
 from google.appengine.ext import testbed
+
+# deferred/queues
+import operator
+import os
+from google.appengine.api import taskqueue
+from google.appengine.ext import deferred
+
+
 
 import datetime
 import pytz
@@ -79,43 +88,20 @@ class Settings(ndb.Model):
 
 
 
-# [START datastore_example_1]
-class TestModel(ndb.Model):
-    """A model class used for testing."""
-    number = ndb.IntegerProperty(default=42)
-    text = ndb.StringProperty()
 
-
-class TestEntityGroupRoot(ndb.Model):
-    """Entity group root"""
-    pass
-
-
-# [START datastore_example_test]
 class DatastoreTestCase(unittest.TestCase):
 
     def setUp(self):
-        # First, create an instance of the Testbed class.
         self.testbed = testbed.Testbed()
-        # Then activate the testbed, which prepares the service stubs for use.
         self.testbed.activate()
-        # Next, declare which service stubs you want to use.
         self.testbed.init_datastore_v3_stub()
         self.testbed.init_memcache_stub()
-        # Clear ndb's in-context cache between tests.
-        # This prevents data from leaking between tests.
-        # Alternatively, you could disable caching by
-        # using ndb.get_context().set_cache_policy(False)
         ndb.get_context().clear_cache()
 
-# [END datastore_example_test]
 
-    # [START datastore_example_teardown]
     def tearDown(self):
         self.testbed.deactivate()
-    # [END datastore_example_teardown]
 
-    # [START datastore_example_insert]
     def testInsertUser(self):
     	user = User(userID='LCaU4CoqV2foifOhhzUnsF3m9dt1', name='Omar Ali', email='omar.ali11231@gmail.com', 
 			phone='6156387550', zipcode='37209', timezone='America/Chicago', geoString='36.1484862,-86.9523954',
@@ -133,9 +119,6 @@ class DatastoreTestCase(unittest.TestCase):
         alert.put()
         self.assertEqual(alert, Alert.query().fetch()[0])
 
-    # [END datastore_example_insert]
-
-    # [START datastore_example_filter]
     def testFilterByRainAlert(self):
         user1 = User(userID='LCaU4CoqV2foifOhhzUnsF3m9dt1', receive_rain='on')
         user2 = User(userID='MCaU4CoqV2foifOhhzUnsF3m9dt2', receive_rain=None)
@@ -144,23 +127,122 @@ class DatastoreTestCase(unittest.TestCase):
         usersReceivingAlerts = User.query().filter(User.receive_rain=='on').fetch()
         self.assertEqual(1, len(usersReceivingAlerts))
         self.assertEqual(user1, usersReceivingAlerts[0])
-    # [END datastore_example_filter]
 
 
-
-# [START HRD_example_1]
-from google.appengine.datastore import datastore_stub_util  # noqa
+from google.appengine.datastore import datastore_stub_util  
 
 
 class HighReplicationTestCaseOne(unittest.TestCase):
 
     def setUp(self):
-        # First, create an instance of the Testbed class.
         self.testbed = testbed.Testbed()
-        # Then activate the testbed, which prepares the service stubs for use.
         self.testbed.activate()
-        # Create a consistency policy that will simulate the High Replication
         # consistency model.
+        self.policy = datastore_stub_util.PseudoRandomHRConsistencyPolicy(
+            probability=0)
+        self.testbed.init_datastore_v3_stub(consistency_policy=self.policy)
+        self.testbed.init_memcache_stub()
+        ndb.get_context().clear_cache()
+
+    def tearDown(self):
+        self.testbed.deactivate()
+
+    def testUserGetWithKeyConsistencyVsGlobalQueryEventualConsistency(self):
+        user = User(userID='LCaU4CoqV2foifOhhzUnsF3m9dt1', name='Omar Ali', email='omar.ali11231@gmail.com', 
+            phone='6156387550', zipcode='37209', timezone='America/Chicago', geoString='36.1484862,-86.9523954',
+            receive_email='on', receive_sms='on', receive_rain='on', receive_reports='on')
+        user.key = ndb.Key(User, 'LCaU4CoqV2foifOhhzUnsF3m9dt1')
+        user.put()
+
+        # Global query doesn't see the data.
+        self.assertEqual(0, User.query().count())
+        # Key query does see the data.
+        self.assertEqual(user, user.key.get())
+
+
+
+
+
+# Mail Tests
+
+class MailTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.testbed = testbed.Testbed()
+        self.testbed.activate()
+        self.testbed.init_mail_stub()
+        self.mail_stub = self.testbed.get_stub(testbed.MAIL_SERVICE_NAME)
+
+    def tearDown(self):
+        self.testbed.deactivate()
+
+    def testMailSent(self):
+        mail.send_mail(to='alice@example.com',
+                       subject='This is a test',
+                       sender='bob@example.com',
+                       body='This is a test e-mail')
+        messages = self.mail_stub.get_sent_messages(to='alice@example.com')
+        self.assertEqual(1, len(messages))
+        self.assertEqual('alice@example.com', messages[0].to)
+
+
+# Queues Tests
+
+# deferred
+
+def _updateATriggerTask(userKey):
+    '''
+    Deferred task which updates the the scheduled task in A Trigger
+    which sends weather reports to user at 8 am.
+    '''
+
+    A_TRIGGER_KEY = 'A_TRIGGER_KEY'
+    A_TRIGGER_SECRET = 'A_TRIGGER_SECRET'
+    #user = User.query(User.key==userKey).fetch(projection=[User.receive_reports, User.timezone])[0]
+    user = userKey.get()
+    #logging.info("++++++++++++ Update A Trgigger +++++++++++")
+    #logging.info(user)
+    #logging.info(user.receive_reports)
+    if user.receive_reports:
+        return 'add'
+        reportDatetime = _getReportDatetime(user.timezone)
+        #domain = 'https%3A%2F%2Fgrow-weather.appspot.com'
+        domain = 'https%3A%2F%2Ffc2116ab.ngrok.io'
+
+        addURL = ('https://api.atrigger.com/v1/tasks/create?key=' + 
+        A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + 
+        '&timeSlice=1minute&count=-1&url=' + domain + 
+        '/endpoints/sendReport/' + 
+        '&tag_ID=' + userKey.id() + '&tag_type=reports&first=' + '2018-09-14T12:46:47.260683-10:00' + '&post=True')
+        
+        #logging.info(triggerurl)
+        A_TRIGGER_PAYLOAD_SECRET = Settings.get('A_TRIGGER_PAYLOAD_SECRET')
+        data = {'userID': userKey.id() or 'None', 'A_TRIGGER_PAYLOAD_SECRET': A_TRIGGER_PAYLOAD_SECRET}
+        #r = requests.post(addURL, data={'userID': user.userID or 'None'}, verify=True)
+        addTaskResponse = requests.post(addURL, data=data, verify=True)
+        
+    else:
+        return 'delete'
+        deleteURL = ('https://api.atrigger.com/v1/tasks/delete?key=' + 
+        A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + '&tag_ID=' + 
+        userKey.id() + '&tag_type=reports')
+        deleteTaskResponse = requests.post(deleteURL, verify=True)
+    #logging.info("####################### here in updateatrigger")
+    #logging.info(addTaskResponse.json())
+
+
+
+class TaskQueueTestCase(unittest.TestCase):
+    def setUp(self):
+        self.testbed = testbed.Testbed()
+        self.testbed.activate()
+
+        # root_path must be set the the location of queue.yaml.
+        # Otherwise, only the 'default' queue will be available.
+        self.testbed.init_taskqueue_stub(
+            root_path=os.path.join(os.path.dirname(__file__), ''))
+        self.taskqueue_stub = self.testbed.get_stub(
+            testbed.TASKQUEUE_SERVICE_NAME)
         self.policy = datastore_stub_util.PseudoRandomHRConsistencyPolicy(
             probability=0)
         # Initialize the datastore stub with this policy.
@@ -173,41 +255,49 @@ class HighReplicationTestCaseOne(unittest.TestCase):
     def tearDown(self):
         self.testbed.deactivate()
 
-    def testEventuallyConsistentGlobalQueryResult(self):
-        class TestModel(ndb.Model):
-            pass
+    def testTaskAddedByDeferred(self):
+        deferred.defer(operator.add, 1, 2)
 
-        user_key = ndb.Key('User', 'ryan')
+        tasks = self.taskqueue_stub.get_filtered_tasks()
+        self.assertEqual(len(tasks), 1)
 
-        # Put two entities
-        ndb.put_multi([
-            TestModel(parent=user_key),
-            TestModel(parent=user_key)
-        ])
+        result = deferred.run(tasks[0].payload)
+        self.assertEqual(result, 3)
 
-        # Global query doesn't see the data.
-        self.assertEqual(0, TestModel.query().count(3))
-        # Ancestor query does see the data.
-        self.assertEqual(2, TestModel.query(ancestor=user_key).count(3))
-# [END HRD_example_1]
+    def testATriggerDeleteTaskDeferred(self):
+        user = User(userID='LCaU4CoqV2foifOhhzUnsF3m9dt1', name='Omar Ali', email='omar.ali11231@gmail.com', 
+            phone='6156387550', zipcode='37209', timezone='America/Chicago', geoString='36.1484862,-86.9523954',
+            receive_email='on', receive_sms='on', receive_rain='on', receive_reports='on')
+        user.key = ndb.Key(User, user.userID)
+        user.put()
+        deferred.defer(_updateATriggerTask, user.key)
 
-    # [START HRD_example_2]
-    def testDeterministicOutcome(self):
-        # 50% chance to apply.
-        self.policy.SetProbability(.5)
-        # Use the pseudo random sequence derived from seed=2.
-        self.policy.SetSeed(2)
+        tasks = self.taskqueue_stub.get_filtered_tasks()
+        self.assertEqual(len(tasks), 1)
 
-        class TestModel(ndb.Model):
-            pass
+        result = deferred.run(tasks[0].payload)
+        self.assertEqual(result, 'add')
 
-        TestModel().put()
 
-        self.assertEqual(0, TestModel.query().count(3))
-        self.assertEqual(0, TestModel.query().count(3))
-        # Will always be applied before the third query.
-        self.assertEqual(1, TestModel.query().count(3))
-    # [END HRD_example_2]
+    def testATriggerAddTaskDeferred(self):
+        user = User(userID='LCaU4CoqV2foifOhhzUnsF3m9dt1', name='Omar Ali', email='omar.ali11231@gmail.com', 
+            phone='6156387550', zipcode='37209', timezone='America/Chicago', geoString='36.1484862,-86.9523954',
+            receive_email='on', receive_sms='on', receive_rain='on', receive_reports=None)
+        user.key = ndb.Key(User, user.userID)
+        user.put()
+        deferred.defer(_updateATriggerTask, user.key)
+
+        tasks = self.taskqueue_stub.get_filtered_tasks()
+        self.assertEqual(len(tasks), 1)
+
+        result = deferred.run(tasks[0].payload)
+        self.assertEqual(result, 'delete')
+
+
+
+
+
+
 
 
 # [START main]

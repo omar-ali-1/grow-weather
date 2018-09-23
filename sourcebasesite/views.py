@@ -365,8 +365,6 @@ def _updateATriggerTask(userKey):
             #r = requests.post(addURL, data={'userID': user.userID or 'None'}, verify=True)
             addTaskResponse = requests.post(addURL, data=data, verify=True)
             
-        # Cannot use deferred for both update and delete, since google queues may not process tasks in the 
-        # order in which they were enqueued.
         else:
             deleteURL = ('https://api.atrigger.com/v1/tasks/delete?key=' + 
             A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + '&tag_ID=' + 
@@ -581,7 +579,9 @@ def updateUser(request):
         if userUpdated:
             user.put()
             if updateReports:
-                # Enqueue task which updates trigger in ATrigger database
+                # Enqueue task which updates trigger in ATrigger database. We can use 
+                # defer/queueing without timing issues because task addition/deletion 
+                # depends on user property
                 deferred.defer(_updateATriggerTask, userKey, _queue='ATrigger-queue')
             
             #logging.info(requests.get)
