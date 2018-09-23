@@ -10,15 +10,22 @@ from django.core.urlresolvers import reverse
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 
-# Our App imports
+from google.oauth2 import id_token
+from google.auth.transport import requests as googlerequests
+import requests_toolbelt.adapters.appengine
+
 from google.appengine.api import users, mail
 from google.appengine.ext import webapp
 from google.appengine.ext import ndb
 from google.appengine.ext import deferred
 from models import *
 from google.appengine.ext.webapp.util import run_wsgi_app
+from google.appengine.ext import ndb
+import google.auth.transport.requests
+import google.oauth2.id_token
+import requests_toolbelt.adapters.appengine
 
-from django.template.defaultfilters import slugify
+
 from ast import literal_eval
 import logging
 
@@ -32,9 +39,7 @@ import json
 
 # google oauth2 verification
 
-from google.oauth2 import id_token
-from google.auth.transport import requests as googlerequests
-import requests_toolbelt.adapters.appengine
+
 
 # Use the App Engine Requests adapter. This makes sure that Requests uses
 # URLFetch.
@@ -43,10 +48,7 @@ from issuesite.models import *
 
 
 
-from google.appengine.ext import ndb
-import google.auth.transport.requests
-import google.oauth2.id_token
-import requests_toolbelt.adapters.appengine
+
 
 import datetime
 import pytz
@@ -70,6 +72,13 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 requests_toolbelt.adapters.appengine.monkeypatch()
 HTTP_REQUEST = google.auth.transport.requests.Request()
 
+# Templates
+
+def home(request):
+    return render(request, "sourcebasesite/home.html")
+
+
+# User Verification
 
 def _getClaims(request):
     try:
@@ -82,9 +91,6 @@ def _getClaims(request):
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
         return None
-
-def home(request):
-    return render(request, "sourcebasesite/home.html")
 
 
 def verifyOrCreateUser(request):
@@ -108,49 +114,8 @@ def verifyOrCreateUser(request):
         user.put()
     return HttpResponse(json.dumps({'status':'success'}))
 
-def userProfile(request, userID):
-    user = _getUserObject(userID)
-    error = None
-    if not user:
-        error = "Sorry, this user does not exist!"
-    return render(request, "sourcebasesite/user_profile.html", {'user': user, 'error':error})
 
-def _getUserObject(userID):
-    user = User.query(User.userID==userID).fetch()
-    if user:
-        return user[0]
-    else:
-        return None
-
-
-def fetchProfile(request):
-    
-    #print "i am here"
-    # print request
-    id_token = request.META['HTTP_AUTHORIZATION'].split(' ').pop()
-    print id_token
-    claims = google.oauth2.id_token.verify_firebase_token(
-        id_token, HTTP_REQUEST)
-    if not claims:
-        return HttpResponse('Sorry! You did not provide the credentials necessary to access this resource.', status=401)
-
-    profile = query_database(claims['sub'], claims)
-
-
-    return HttpResponse(json.dumps(profile))
-
-
-
-def signIn(request):
-    # Verify Firebase auth.
-    id_token = request.headers['Authorization'].split(' ').pop()
-    claims = google.oauth2.id_token.verify_firebase_token(
-        id_token, HTTP_REQUEST)
-    if not claims:
-        return HttpResponse('Sorry! You did not provide the credentials necessary to access this resource.', status=401)
-    else:
-        return HttpResponse("Welcome, " + claims['sub'] + "!")
-
+# Google Maps 
 
 def _getGeoString(zipcode):
     try:
@@ -169,56 +134,9 @@ def _getGeoString(zipcode):
         print(exc_type, fname, exc_tb.tb_lineno)
 
 
-# TODO implement pagination for when alert number becomes high
-def getAlertHistory(request):
-    try:
-        claims = _getClaims(request)
-        if not claims:
-            return HttpResponse('Sorry! You did not provide the credentials necessary to access this resource.', status=401)
-        # claims['sub'] is the user ID string
-        userKey = ndb.Key(User, claims['sub'])
-        alerts = Alert.query(Alert.user==userKey).order(-Alert.datetime).fetch()
-        #logging.info(alerts)
-        alertsList = []
-        for alert in alerts:
-            #logging.info("Alert: ===========")
-            #logging.info(alert)
-            alertDict = {}
-            alertDict['precipProbability'] = alert.precipitation
-            alertDict['datetime'] = alert.datetime.isoformat()
-            alertsList.append(alertDict)
-        alertsDict = {}
-        alertsDict['alerts'] = alertsList
-        alerts = json.dumps(alertsDict)
-        return HttpResponse(alerts)
+# Rain Alerts
 
-    except Exception as e:
-        logging.info(e)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(exc_type, fname, exc_tb.tb_lineno)
-
-'''
-# Tasklet automatically handles batching of queries when using asynchronous get_async()
-@ndb.tasklet
-def _checkRainTask(userID):
-    userKey = ndb.Key(User, userID)
-    user = userKey.get_async()
-    precipProbability = _getPrecipProb(user.geoString)
-    logging.info(user.name + ':')
-    logging.info(precipProbability)
-    if precipProbability > -1:
-        nowUTCDatetime = datetime.datetime.utcnow()
-        reportType = 'rainAlert'
-        report = Report(user=user.userID, datetime=nowUTCDatetime, precipitation=precipProbability, reportType=reportType)
-        report.put()
-        _sendReport(user, report, rainAlert=True)
-
-
-@ndb.tasklet
-def _enqueueCheckRainTasks():
-    pass
-'''
+# TODO later: implement pagination for when alert number becomes high
 # csrf exempt to allow GCP Queues to work
 @csrf_exempt
 def _alertUser(userKey):
@@ -281,6 +199,37 @@ def _getPrecipProb(geoString):
         print(exc_type, fname, exc_tb.tb_lineno)
 
 
+def getAlertHistory(request):
+    try:
+        claims = _getClaims(request)
+        if not claims:
+            return HttpResponse('Sorry! You did not provide the credentials necessary to access this resource.', status=401)
+        # claims['sub'] is the user ID string
+        userKey = ndb.Key(User, claims['sub'])
+        alerts = Alert.query(Alert.user==userKey).order(-Alert.datetime).fetch()
+        #logging.info(alerts)
+        alertsList = []
+        for alert in alerts:
+            #logging.info("Alert: ===========")
+            #logging.info(alert)
+            alertDict = {}
+            alertDict['precipProbability'] = alert.precipitation
+            alertDict['datetime'] = alert.datetime.isoformat()
+            alertsList.append(alertDict)
+        alertsDict = {}
+        alertsDict['alerts'] = alertsList
+        alerts = json.dumps(alertsDict)
+        return HttpResponse(alerts)
+
+    except Exception as e:
+        logging.info(e)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+
+
+
+############# Weather Reports
 
 def _getWeather(geoString):
     try:
@@ -304,45 +253,6 @@ def _getWeather(geoString):
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
-
-
-
-def _getTimeZone(request, zipcode):
-    #logging.info("get timezone")
-    #logging.info(zipcode)
-    TimeZoneURL = ('https://www.zipcodeapi.com/rest/P2XWrO6FkXTl2yfjS85Wl4kHJT' +
-    'XoyizlPOT1A6IjBWzWeFDWSXv3WMbOWrJ4VMMH/info.json/' + zipcode + '/degrees')
-    TZResponse = requests.get(TimeZoneURL).json()
-    #logging.info(TZResponse)
-    # TODO handle error better
-    if 'error_msg' in TZResponse:
-        logging.info(TZResponse['error_msg'])
-        return 'err', TZResponse['error_msg']
-    # The timezone API simply ignores any chars beyond the 5th in zipcode, doesnt return err.
-    elif 'timezone' in TZResponse:
-        logging.info("#############TZResponse")
-        return '', TZResponse['timezone']['timezone_identifier']
-    else:
-        return 'err', 'Unknown error! Sorry!'
-
-
-def resendReport(request):
-    try:
-        claims = _getClaims(request)
-        user = _getUserObject(claims['sub'])
-        userKey = claims['sub']
-        report = Report.query(Report.user==userKey, Report.reportType=='dailyForecast').order(-Report.datetime).get()
-        if report:
-            _sendReport(user, report)
-            return HttpResponse(json.dumps({'status':'success'}))
-        else:
-            return HttpResponse(json.dumps({'err':'You don\'t have any reports yet!'}))
-    except Exception as e:
-        logging.info(e)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(exc_type, fname, exc_tb.tb_lineno)
-
 
 def _sendMessage(userKey, body):
     try:
@@ -377,100 +287,26 @@ def _sendMessage(userKey, body):
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
-'''
-def _sendReport(user, reportKey, rainAlert=False):
-    try:
-        report = reportKey.get()
-        if rainAlert:
-            reportBody = u'\nHey {}!\n\nIn about an hour, the chance of rain will be {}%.'.format(user.name, report.precipitation)
-        else:
-            reportBody = u'\nHey {}!\n\nHere is your forecast for today:\n\n{}\n\nDaily Low: {}\N{DEGREE SIGN}F\n\nDaily High: {}\N{DEGREE SIGN}F\nChance of rain: {}%'.format(user.name, report.summary, report.dailyLow, report.dailyHigh, report.precipitation)
-        #logging.info(reportBody)
-
-        # Twilio test
-        authToken = 'ace161d8b47b77ad5a729b10c02633f0'
-        accountSID = 'AC437de0c4319e3101f8a41972a7ed10fa'
-        twilioNumber = '+16292069621'
-        #twilioNumber = '+15005550006'
 
 
-        client = Client(accountSID, authToken)
-        message = client.messages.create(
-            body=reportBody,
-            # to='+1 615-592-5253',
-            to= '+1' + user.phone,
-            from_=twilioNumber,
-        )
+def _getTimeZone(request, zipcode):
+    #logging.info("get timezone")
+    #logging.info(zipcode)
+    TimeZoneURL = ('https://www.zipcodeapi.com/rest/P2XWrO6FkXTl2yfjS85Wl4kHJT' +
+    'XoyizlPOT1A6IjBWzWeFDWSXv3WMbOWrJ4VMMH/info.json/' + zipcode + '/degrees')
+    TZResponse = requests.get(TimeZoneURL).json()
+    #logging.info(TZResponse)
+    # TODO handle error better
+    if 'error_msg' in TZResponse:
+        logging.info(TZResponse['error_msg'])
+        return 'err', TZResponse['error_msg']
+    # The timezone API simply ignores any chars beyond the 5th in zipcode, doesnt return err.
+    elif 'timezone' in TZResponse:
+        logging.info("#############TZResponse")
+        return '', TZResponse['timezone']['timezone_identifier']
+    else:
+        return 'err', 'Unknown error! Sorry!'
 
-        senderAddress = 'omar.ali11231@gmail.com'
-        recepientAddress = user.email
-        mail.send_mail(sender=senderAddress,
-                       to=recepientAddress,
-                       subject="Your daily weather report from Grow",
-                       body=reportBody
-                       )
-    except Exception as e:
-        logging.info(e)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(exc_type, fname, exc_tb.tb_lineno)
-'''
-
-# TODO validate IP address of A Trigger API server
-@csrf_exempt 
-def sendReport(request):
-    """Send a reminder to a phone using Twilio SMS"""
-    # Get our appointment from the database
-    try:
-        '''
-        A_TRIGGER_KEY = Settings.get('A_TRIGGER_KEY')
-        A_TRIGGER_SECRET = Settings.get('A_TRIGGER_SECRET')
-
-        validateRequestIpURL = ('https://api.atrigger.com/v1/ipverify?key=' + 
-            A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + '&ip=127.0.0.1'
-        '''
-
-        req = request.REQUEST
-        # logging.info('########## Request Data:')
-        # logging.info(request)
-
-        # Additional security check to make sure task was created by this app. Payload is SSL-secured.
-        if Settings.get('A_TRIGGER_PAYLOAD_SECRET') != request.POST['A_TRIGGER_PAYLOAD_SECRET']:
-            return HttpResponse(error, status=401)
-
-        userID = request.POST['userID']
-        userKey = ndb.Key(User, userID)
-        user = userKey.get()
-        dailySummary, dailyLow, dailyHigh, dailyRainProb = _getWeather(user.geoString)
-        #logging.info('======== Weather Data:')
-        #logging.info(_getWeather(user.zipcode))
-        logging.info("======== We are here in sendReport===============")
-        
-        nowUTCDatetime = datetime.datetime.utcnow()
-        reportType = 'dailyForecast'
-
-        report = Report(user=userKey, datetime=nowUTCDatetime, dailyLow=dailyLow, dailyHigh=dailyHigh, summary=dailySummary, precipitation=dailyRainProb)
-        report.put()
-
-        reportBody = u'\nHey {}!\n\nHere is your forecast for today:\n\n{}\n\nDaily Low: {}\N{DEGREE SIGN}F\nDaily High: {}\N{DEGREE SIGN}F\nChance of rain: {}%'.format(user.name, report.summary, report.dailyLow, report.dailyHigh, report.precipitation)
-        #logging.info(reportBody)
-        userKey = ndb.Key(User, userID)
-        _sendMessage(userKey, reportBody)
-
-        '''if receive_reports == 'on':
-            report_time = datetime.time(0,0,0)
-            logging.info('here')
-            logging.info(report_time)'''
-        #usertimeOffset = userZip.timezone
-        #user.send_time = datetime.time((8-userTimeOffset)%24)
-        
-        return HttpResponse(json.dumps({'status':'success'}))
-        
-    except Exception as e:
-        logging.info(e)
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        print(exc_type, fname, exc_tb.tb_lineno)
 
 def _getReportDatetime(timezone):
     try:
@@ -543,6 +379,89 @@ def _updateATriggerTask(userKey):
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
+
+
+
+@csrf_exempt 
+def sendReport(request):
+    """Send a reminder to a phone using Twilio SMS"""
+    # Get our appointment from the database
+    try:
+        '''
+        A_TRIGGER_KEY = Settings.get('A_TRIGGER_KEY')
+        A_TRIGGER_SECRET = Settings.get('A_TRIGGER_SECRET')
+
+        validateRequestIpURL = ('https://api.atrigger.com/v1/ipverify?key=' + 
+            A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + '&ip=127.0.0.1'
+        '''
+
+        req = request.REQUEST
+        # logging.info('########## Request Data:')
+        # logging.info(request)
+
+        # Additional security check to make sure task was created by this app. Payload is SSL-secured.
+        if Settings.get('A_TRIGGER_PAYLOAD_SECRET') != request.POST['A_TRIGGER_PAYLOAD_SECRET']:
+            return HttpResponse(error, status=401)
+
+        userID = request.POST['userID']
+        userKey = ndb.Key(User, userID)
+        user = userKey.get()
+        dailySummary, dailyLow, dailyHigh, dailyRainProb = _getWeather(user.geoString)
+        #logging.info('======== Weather Data:')
+        #logging.info(_getWeather(user.zipcode))
+        logging.info("======== We are here in sendReport===============")
+        
+        nowUTCDatetime = datetime.datetime.utcnow()
+        reportType = 'dailyForecast'
+
+        report = Report(user=userKey, datetime=nowUTCDatetime, dailyLow=dailyLow, dailyHigh=dailyHigh, summary=dailySummary, precipitation=dailyRainProb)
+        report.put()
+
+        reportBody = u'\nHey {}!\n\nHere is your forecast for today:\n\n{}\n\nDaily Low: {}\N{DEGREE SIGN}F\nDaily High: {}\N{DEGREE SIGN}F\nChance of rain: {}%'.format(user.name, report.summary, report.dailyLow, report.dailyHigh, report.precipitation)
+        #logging.info(reportBody)
+        userKey = ndb.Key(User, userID)
+        _sendMessage(userKey, reportBody)
+
+        '''if receive_reports == 'on':
+            report_time = datetime.time(0,0,0)
+            logging.info('here')
+            logging.info(report_time)'''
+        #usertimeOffset = userZip.timezone
+        #user.send_time = datetime.time((8-userTimeOffset)%24)
+        
+        return HttpResponse(json.dumps({'status':'success'}))
+        
+    except Exception as e:
+        logging.info(e)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+
+
+
+def resendReport(request):
+    try:
+        claims = _getClaims(request)
+        user = ndb.Key(User, claims['sub']).get()
+        userKey = claims['sub']
+        report = Report.query(Report.user==userKey, Report.reportType=='dailyForecast').order(-Report.datetime).get()
+        if report:
+            _sendReport(user, report)
+            return HttpResponse(json.dumps({'status':'success'}))
+        else:
+            return HttpResponse(json.dumps({'err':'You don\'t have any reports yet!'}))
+    except Exception as e:
+        logging.info(e)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+
+
+
+
+########### Update User
+
+
 
 def _updateUserProperties(user, post, claims, timezone):
     try:
@@ -706,6 +625,8 @@ def prepopulateFields(request):
         print(exc_type, fname, exc_tb.tb_lineno)
 
 
+
+# A Trigger Verification
 
 # TODO check security of serving file this way, and with static server in production
 def ATriggerVerify(request):

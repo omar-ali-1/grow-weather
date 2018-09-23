@@ -31,10 +31,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 urlpatterns = [
     # url(r'^$', RedirectView.as_view(url='/source/')), # change to source/
     url(r'^$', home, name='home'),
-    url(r'^tokensignin/', signIn, name='signIn'),
-    url(r'^fetchProfile/', fetchProfile, name='fetchProfile'),
-    url(r'^users/(?P<userID>[a-zA-Z0-9-_]+)/$', userProfile, name='userProfile'),
-    url(r'^verifyOrCreateUser/$', verifyOrCreateUser, name='verifyOrCreateUser'),
+    url(r'^endpoints/verifyOrCreateUser/$', verifyOrCreateUser, name='verifyOrCreateUser'),
     # Serve text file used by scheduling server to verify this server
     url(r'^ATriggerVerify.txt$', ATriggerVerify, name='ATriggerVerify'),
     url(r'^endpoints/updateUser/$', updateUser, name='updateUser'),

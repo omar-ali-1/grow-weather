@@ -165,7 +165,7 @@ $(function(){
 
           function verifyOrCreateUser(userIdToken, userID) {
             //console.log(userIdToken);
-            $.ajax('/verifyOrCreateUser/', {
+            $.ajax('/endpoints/verifyOrCreateUser/', {
               /* Set header for the XMLHttpRequest to get data from the web server
               associated with userIdToken */
               headers: {
