@@ -39,9 +39,9 @@ urlpatterns = [
     url(r'^endpoints/resendReport/$', resendReport, name='resendReport'),
     url(r'^endpoints/prepopulateFields/$', prepopulateFields, name='prepopulateFields'),
     url(r'^endpoints/checkRainAndAlertUsers/$', checkRainAndAlertUsers, name='checkRainAndAlertUsers'),
-    url(r'^endpoints/getAlertHistory/$', getAlertHistory, name='getAlertHistory')
+    url(r'^endpoints/getAlertHistory/$', getAlertHistory, name='getAlertHistory'),
+    # url(r'^endpoints/createDSTUpdateTask/$', createDSTUpdateTask, name='createDSTUpdateTask'),
+    url(r'^endpoints/updateDaylightSavings/$', updateDaylightSavings, name='updateDaylightSavings')
 
-    #url(r'^(?P<path>.*)$', 'django.views.static.serve', {
-    #    'document_root': BASE_DIR,}),
 ]
 

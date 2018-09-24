@@ -23,6 +23,7 @@ class User(ndb.Model):
     receive_sms = ndb.StringProperty()
     receive_rain = ndb.StringProperty()
     receive_reports = ndb.StringProperty()
+    task_exists = ndb.BooleanProperty()
 
 
 class Report(ndb.Model):

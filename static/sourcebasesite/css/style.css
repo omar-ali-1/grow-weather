@@ -814,6 +814,11 @@ li.taggle {
     border-left-color: rgb(41, 44, 47);
 }
 
+.btn-success.disabled, .btn-success:disabled {
+    background-color: #618baf;
+    border-color: #292c2f;
+}
+
 .btn-success:hover {
     color: #fff;
     background-color: #618baf;

@@ -32,7 +32,7 @@ function prepopulateFields(userIdToken, userID) {
     $('#name').empty();
     // console.log(data);
     // Iterate over user data to display user's notes from database.
-    console.log(data);
+    //console.log(data);
   });
 }
 
@@ -76,7 +76,8 @@ $(function(){
         
         var name = user.displayName;
         user.getIdToken().then(function(idToken) {
-          console.log(idToken);
+          // console.log(idToken);
+          prepopulateFields(idToken, user.uid);
           //prepopulateFields(idToken, user.uid);
         });
         /* If the provider gives a display name, use the name for the
@@ -172,7 +173,7 @@ $(function(){
                 'Authorization': 'Bearer ' + userIdToken
               }
             }).then(function(data){
-              prepopulateFields(userIdToken, userID);
+              //
             });
           }
           return false;
@@ -228,7 +229,7 @@ $(function(){
     event.preventDefault();
     $('.navbar-toggler').click();
     firebase.auth().signOut().then(function() {
-      console.log("Sign out successfullllll");
+      //console.log("Sign out successfullllll");
       $('#input-zip').val('');
   
   
@@ -258,8 +259,8 @@ $(function(){
 
 
 function updateUser(data) {
-  console.log("updateUser");
-  console.log($( "#settings-form" ).attr("action"));
+  //console.log("updateUser");
+  //console.log($( "#settings-form" ).attr("action"));
   try {
     appUser.getIdToken().then(function(idToken) {
       $.ajax({
@@ -272,12 +273,14 @@ function updateUser(data) {
           dataType: 'json',
         beforeSend: function() {
           $('#save-settings').attr('disabled', 'disabled');
+          $('#resend-report').attr('disabled', 'disabled');
           $('#update-message').html('');
           $('#spinner-container').show();
           addSpinner($('#spinner-container'));
         },
         complete: function(){
           $('#save-settings').removeAttr('disabled', 'disabled');
+          $('#resend-report').removeAttr('disabled', 'disabled');
           removeSpinner($('#spinner-container'));
           $('#spinner-container').hide();
 
@@ -311,8 +314,8 @@ function updateUser(data) {
 };
 
 function resendReport(data) {
-  console.log("updateUserSettings");
-  console.log($( "#settings-form" ).attr("action"));
+  //console.log("updateUserSettings");
+  //console.log($( "#settings-form" ).attr("action"));
   try {
     resendURL = '/endpoints/resendReport/';
     appUser.getIdToken().then(function(idToken) {
@@ -367,6 +370,31 @@ function resendReport(data) {
 };
 
 
+
+// Event Handlers
+
+$( "#settings-form" ).on( "submit", function( event ) {
+  event.preventDefault();
+  //console.log(this);
+  var data = $( this ).serialize();
+  //console.log(data);
+  updateUser(data);
+});
+
+
+$( "#resend-report" ).on( "click", function( event ) {
+  event.preventDefault();
+  //console.log(this);
+  //var data = $( this ).serialize();
+  //console.log(data);
+  resendReport();
+  //getHistory();
+});
+
+
+
+
+/*
 function getHistory(data) {
   //console.log("updateUserSettings");
   //console.log($( "#settings-form" ).attr("action"));
@@ -422,29 +450,4 @@ function getHistory(data) {
 
 
 };
-
-
-// Event Handlers
-
-$( "#settings-form" ).on( "submit", function( event ) {
-  event.preventDefault();
-  console.log(this);
-  var data = $( this ).serialize();
-  console.log(data);
-  updateUser(data);
-});
-
-
-$( "#resend-report" ).on( "click", function( event ) {
-  event.preventDefault();
-  //console.log(this);
-  //var data = $( this ).serialize();
-  //console.log(data);
-  //resendReport();
-  getHistory();
-});
-
-// TODO: afer login, the login modal does not reinitialize with its content, and stays empty. 
-// If signed in, and sign out is clicked, sign out is sucessful, but modal still isnt initialized, 
-// and page must be refreshed before new sign in. Page neeeding to be refreshed suggests that 
-// base.js needs to run again. does it not run after sign in? seems not. think about and fix.
+*/

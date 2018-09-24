@@ -1,14 +1,12 @@
 
 # -*- coding: utf-8 -*-
 
+# Django imports
 from django.shortcuts import render
 # from hotelsite.models import Review
 from django.http import HttpResponseRedirect, HttpResponse
 from django.core.urlresolvers import reverse
-# import mongoengine
-# AppEngine Imports
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import template
+
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as googlerequests
@@ -24,7 +22,10 @@ from google.appengine.ext import ndb
 import google.auth.transport.requests
 import google.oauth2.id_token
 import requests_toolbelt.adapters.appengine
-
+# json.loads() and json.dumps() loads and dumps a json string, taking it from
+# valid json string to python dic object, and vice versa, respectively, with
+# dumps() doing the appropriate escaping for us.
+import json
 
 from ast import literal_eval
 import logging
@@ -32,22 +33,9 @@ import logging
 # request urls and get the response, and be able to manipulate it, etc.
 import urllib, urllib2
 
-# json.loads() and json.dumps() loads and dumps a json string, taking it from
-# valid json string to python dic object, and vice versa, respectively, with
-# dumps() doing the appropriate escaping for us.
-import json
-
-# google oauth2 verification
-
-
-
 # Use the App Engine Requests adapter. This makes sure that Requests uses
 # URLFetch.
 requests_toolbelt.adapters.appengine.monkeypatch()
-from issuesite.models import *
-
-
-
 
 
 import datetime
@@ -147,12 +135,12 @@ def _alertUser(userKey):
         precipProbability = _getPrecipProb(user.geoString)
         #logging.info(user.name + ':')
         #logging.info(precipProbability)
-        if precipProbability > -1:
+        if precipProbability >= 30:
             nowUTCDatetime = datetime.datetime.utcnow()
             alert = Alert(user=userKey, datetime=nowUTCDatetime, precipitation=precipProbability)
             alert.put()
             alertBody = u'\nHey {}!\n\nIn about an hour, the chance of rain will be {}%.'.format(user.name, alert.precipitation)
-            _sendMessage(userKey, alertBody)
+            _sendMessage(userKey, alertBody, rainAlert=True)
 
 # csrf exempt to allow cross-origin trigger request in
 @csrf_exempt
@@ -254,33 +242,42 @@ def _getWeather(geoString):
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
 
-def _sendMessage(userKey, body):
+@csrf_exempt
+def _sendMessage(userKey, body, rainAlert=False):
     try:
+        error = ''
         user = userKey.get()
         if user.receive_sms:
             # Twilio info
+            try:
+                authToken = Settings.get('TWILIO_AUTH_TOKEN')
+                accountSID = Settings.get('TWILIO_ACCOUNT_SID')
+                twilioNumber = Settings.get('TWILIO_ACCT_PHONE_NUMBER')
+                #twilioNumber = '+15005550006'
 
-            authToken = Settings.get('TWILIO_AUTH_TOKEN')
-            accountSID = Settings.get('TWILIO_ACCOUNT_SID')
-            twilioNumber = Settings.get('TWILIO_ACCT_PHONE_NUMBER')
-            #twilioNumber = '+15005550006'
 
-
-            client = Client(accountSID, authToken)
-            message = client.messages.create(
-                body=body,
-                # to='+1 615-592-5253',
-                to= '+1' + user.phone,
-                from_=twilioNumber,
-            )
+                client = Client(accountSID, authToken)
+                message = client.messages.create(
+                    body=body,
+                    # to='+1 615-592-5253',
+                    to= '+1' + user.phone,
+                    from_=twilioNumber,
+                )
+            except e:
+                error = "Sorry! We were not able to send you SMS at this time!"
 
         if user.receive_email:
+            if rainAlert:
+                subject = 'Rain Alert'
+            else:
+                subject = 'Your daily weather report from Grow'
+
             senderAddress = 'omar.ali11231@gmail.com'
             recepientAddress = user.email
             mail.send_mail(sender=senderAddress,
                            to=recepientAddress,
-                           subject="Your daily weather report from Grow",
-                           body=body
+                           subject=subject,
+                           body=body + '\n\n' + error
                            )
     except Exception as e:
         logging.info(e)
@@ -344,35 +341,39 @@ def _updateATriggerTask(userKey):
         A_TRIGGER_SECRET = Settings.get('A_TRIGGER_SECRET')
         #user = User.query(User.key==userKey).fetch(projection=[User.receive_reports, User.timezone])[0]
         user = userKey.get()
-        logging.info("++++++++++++ Update A Trgigger +++++++++++")
-        logging.info(user)
-        logging.info(user.receive_reports)
-        if user.receive_reports:
+        #logging.info("++++++++++++ Update A Trgigger +++++++++++")
+        #logging.info(user)
+        #logging.info(user.receive_reports)
+
+        if user.receive_reports and not user.task_exists:
 
             reportDatetime = _getReportDatetime(user.timezone)
-            #domain = 'https%3A%2F%2Fgrow-weather.appspot.com'
-            domain = 'https%3A%2F%2Ffc2116ab.ngrok.io'
+            domain = 'https%3A%2F%2Fgrow-weather.appspot.com'
+            #domain = 'https%3A%2F%2Ffc2116ab.ngrok.io'
 
             addURL = ('https://api.atrigger.com/v1/tasks/create?key=' + 
             A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + 
-            '&timeSlice=1minute&count=-1&url=' + domain + 
+            '&timeSlice=1day&count=-1&url=' + domain + 
             '/endpoints/sendReport/' + 
-            '&tag_ID=' + userKey.id() + '&tag_type=reports&first=' + '2018-09-14T12:46:47.260683-10:00' + '&post=True')
+            '&tag_ID=' + userKey.id() + '&tag_type=reports&first=' + reportDatetime + '&post=True')
             
             #logging.info(triggerurl)
             A_TRIGGER_PAYLOAD_SECRET = Settings.get('A_TRIGGER_PAYLOAD_SECRET')
             data = {'userID': userKey.id() or 'None', 'A_TRIGGER_PAYLOAD_SECRET': A_TRIGGER_PAYLOAD_SECRET}
             #r = requests.post(addURL, data={'userID': user.userID or 'None'}, verify=True)
             addTaskResponse = requests.post(addURL, data=data, verify=True)
-            
+            user.task_exists = True
+            user.put()
         else:
             deleteURL = ('https://api.atrigger.com/v1/tasks/delete?key=' + 
             A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + '&tag_ID=' + 
             userKey.id() + '&tag_type=reports')
             deleteTaskResponse = requests.post(deleteURL, verify=True)
+            user.task_exists = False
+            user.put()
         #logging.info("####################### here in updateatrigger")
         #logging.info(addTaskResponse.json())
-        return
+        return HttpResponse()
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -407,10 +408,9 @@ def sendReport(request):
         dailySummary, dailyLow, dailyHigh, dailyRainProb = _getWeather(user.geoString)
         #logging.info('======== Weather Data:')
         #logging.info(_getWeather(user.zipcode))
-        logging.info("======== We are here in sendReport===============")
+        #logging.info("======== We are here in sendReport===============")
         
         nowUTCDatetime = datetime.datetime.utcnow()
-        reportType = 'dailyForecast'
 
         report = Report(user=userKey, datetime=nowUTCDatetime, dailyLow=dailyLow, dailyHigh=dailyHigh, summary=dailySummary, precipitation=dailyRainProb)
         report.put()
@@ -418,7 +418,7 @@ def sendReport(request):
         reportBody = u'\nHey {}!\n\nHere is your forecast for today:\n\n{}\n\nDaily Low: {}\N{DEGREE SIGN}F\nDaily High: {}\N{DEGREE SIGN}F\nChance of rain: {}%'.format(user.name, report.summary, report.dailyLow, report.dailyHigh, report.precipitation)
         #logging.info(reportBody)
         userKey = ndb.Key(User, userID)
-        _sendMessage(userKey, reportBody)
+        deferred.defer(_sendMessage, userKey, reportBody, _queue='reports-queue')
 
         '''if receive_reports == 'on':
             report_time = datetime.time(0,0,0)
@@ -440,11 +440,12 @@ def sendReport(request):
 def resendReport(request):
     try:
         claims = _getClaims(request)
-        user = ndb.Key(User, claims['sub']).get()
-        userKey = claims['sub']
-        report = Report.query(Report.user==userKey, Report.reportType=='dailyForecast').order(-Report.datetime).get()
+        userKey = ndb.Key(User, claims['sub'])
+        user = userKey.get()
+        report = Report.query(Report.user==userKey).order(-Report.datetime).get()
         if report:
-            _sendReport(user, report)
+            reportBody = u'\nHey {}!\n\nHere is your forecast for today:\n\n{}\n\nDaily Low: {}\N{DEGREE SIGN}F\nDaily High: {}\N{DEGREE SIGN}F\nChance of rain: {}%'.format(user.name, report.summary, report.dailyLow, report.dailyHigh, report.precipitation)
+            deferred.defer(_sendMessage, userKey, reportBody, _queue='reports-queue')
             return HttpResponse(json.dumps({'status':'success'}))
         else:
             return HttpResponse(json.dumps({'err':'You don\'t have any reports yet!'}))
@@ -506,6 +507,7 @@ def _updateUserProperties(user, post, claims, timezone):
         return userUpdated
 
     except Exception as e:
+        logging.info(e)
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
@@ -537,9 +539,6 @@ def updateUser(request):
 
         #### Request processing ###
         post = request.POST
-        
-
-
 
         # Validate zipcode input and update corresponding user property
         zipcode = post['input-zip'] if 'input-zip' in post else None
@@ -547,7 +546,6 @@ def updateUser(request):
         if user.zipcode != zipcode or not zipcode:
             if not re.match(r"^[0-9]{5}(?:-[0-9]{4})?$", zipcode):
                 return HttpResponse(json.dumps({'err': "Invalid zipcode."}))
-
 
         # Fetch timezone info for the zipcode if zipcode has changed, and update corresp. user property
             timezoneTuple = _getTimeZone(request, zipcode) if zipcode != user.zipcode else ('', user.timezone)
@@ -602,7 +600,7 @@ def prepopulateFields(request):
     
 '''
     try:
-        logging.info("======== We are here in updateUserSettings================")
+        #logging.info("======== We are here in updateUserSettings================")
         claims = _getClaims(request)
         if not claims:
             return HttpResponse('Sorry! You did not provide the credentials necessary to access this resource.', status=401)
@@ -613,7 +611,7 @@ def prepopulateFields(request):
         email = claims['email']
 
         user = ndb.Key(User, claims['sub']).get()
-        logging.info(user)
+        #logging.info(user)
         return HttpResponse(json.dumps({'receive_reports': user.receive_reports, \
             'receive_rain': user.receive_rain, 'receive_email': user.receive_email, \
             'receive_sms': user.receive_sms, 'phone': user.phone, 'zipcode': user.zipcode}))
@@ -623,6 +621,120 @@ def prepopulateFields(request):
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
+        return HttpResponse(json.dumps({'err': 'User does not exist (yet).'}))
+
+
+# Daylight savings update
+
+def _updateUserReportTime(userKey):
+        A_TRIGGER_KEY = Settings.get('A_TRIGGER_KEY')
+        A_TRIGGER_SECRET = Settings.get('A_TRIGGER_SECRET')
+        #user = User.query(User.key==userKey).fetch(projection=[User.receive_reports, User.timezone])[0]
+        user = userKey.get()
+        #logging.info("++++++++++++ Update A Trgigger +++++++++++")
+        #logging.info(user)
+        #logging.info(user.receive_reports)
+        if user.receive_reports:
+            eastern = timezone('US/Eastern')
+            # allow 2 hours extra after daylight time switch (4 am instead of 2 am)
+            DSTStartOrEndDateTime = eastern.localize(datetime.datetime(2018, 3, 11, 4), is_dst=True)
+            # DSTStartOrEndDateTime = eastern.localize(datetime.datetime(2018, 11, 4, 4), is_dst=True)
+
+            
+            # logging.info(reportDatetime.isofor
+
+            domain = 'https%3A%2F%2Fgrow-weather.appspot.com'
+            #domain = 'https%3A%2F%2Ffc2116ab.ngrok.io'
+
+            addURL = ('https://api.atrigger.com/v1/tasks/create?key=' + 
+            A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + 
+            '&timeSlice=1day&count=-1&url=' + domain + 
+            '/endpoints/sendReport/' + '&tag_type=DST&first=' + DSTStartOrEndDateTime + '&post=True')
+            
+            #logging.info(triggerurl)
+            A_TRIGGER_PAYLOAD_SECRET = Settings.get('A_TRIGGER_PAYLOAD_SECRET')
+            data = {'userID': userKey.id() or 'None', 'A_TRIGGER_PAYLOAD_SECRET': A_TRIGGER_PAYLOAD_SECRET}
+            #r = requests.post(addURL, data={'userID': user.userID or 'None'}, verify=True)
+            addDSTTaskResponse = requests.post(addURL, data=data, verify=True)
+            
+        return HttpResponse()
+
+
+def _updateUserReportTimeDST(userKey):
+        A_TRIGGER_KEY = Settings.get('A_TRIGGER_KEY')
+        A_TRIGGER_SECRET = Settings.get('A_TRIGGER_SECRET')
+        #user = User.query(User.key==userKey).fetch(projection=[User.receive_reports, User.timezone])[0]
+        user = userKey.get()
+        #logging.info("++++++++++++ Update A Trgigger +++++++++++")
+        #logging.info(user)
+        #logging.info(user.receive_reports)
+
+        # task_exists ensures that not only is user signed up to get reports, but that the task exists in
+        # A Trigger in order to avoid duplicate tasks. Otherwise, user is not signed up or task is queued
+        # for creation
+        if user.receive_reports and user.task_exists:
+            # allow 2 hours extra after daylight time switch (4 am instead of 2 am)
+            reportDatetime = _getReportDatetime(user.timezone)
+            domain = 'https%3A%2F%2Fgrow-weather.appspot.com'
+            #domain = 'https%3A%2F%2Ffc2116ab.ngrok.io'
+
+            addURL = ('https://api.atrigger.com/v1/tasks/create?key=' + 
+                A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + 
+                '&timeSlice=1day&count=-1&url=' + domain + 
+                '/endpoints/sendReport/' + 
+                '&tag_ID=' + userKey.id() + '&tag_type=reports&first=' + '2018-09-14T12:46:47.260683-10:00' + '&post=True')
+
+            A_TRIGGER_PAYLOAD_SECRET = Settings.get('A_TRIGGER_PAYLOAD_SECRET')
+            data = {'userID': userKey.id() or 'None', 'A_TRIGGER_PAYLOAD_SECRET': A_TRIGGER_PAYLOAD_SECRET}
+            #r = requests.post(addURL, data={'userID': user.userID or 'None'}, verify=True)
+            
+            addTaskResponse = requests.post(addURL, data=data, verify=True)
+
+        return HttpResponse()
+
+@csrf_exempt
+def updateDaylightSavings(request):
+    try:
+
+        req = request.REQUEST
+        # logging.info('########## Request Data:')
+        # logging.info(request)
+
+        # Additional security check to make sure task was created by this app. Payload is SSL-secured.
+        #if Settings.get('A_TRIGGER_PAYLOAD_SECRET') != request.POST['A_TRIGGER_PAYLOAD_SECRET']:
+        #    return HttpResponse(error, status=401)
+
+        A_TRIGGER_KEY = Settings.get('A_TRIGGER_KEY')
+        A_TRIGGER_SECRET = Settings.get('A_TRIGGER_SECRET')
+
+        deleteURL = ('https://api.atrigger.com/v1/tasks/delete?key=' + 
+            A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + '&tag_type=reports')
+        
+        deleteTaskResponse = requests.post(deleteURL, verify=True)
+
+        # task_exists ensures that not only is user signed up to get reports, but that the task exists in
+        # A Trigger in order to avoid duplicate tasks. Otherwise, user is not signed up or task is queued
+        # for creation
+        userKeysQuery = User.query(User.receive_rain=='on', User.task_exists==True)
+        logging.info(userKeysQuery.fetch())
+        for userKey in userKeysQuery.iter(keys_only=True):
+            deferred.defer(_updateUserReportTimeDST, userKey, _queue='DST-queue')
+
+        '''if receive_reports == 'on':
+            report_time = datetime.time(0,0,0)
+            logging.info('here')
+            logging.info(report_time)'''
+        #usertimeOffset = userZip.timezone
+        #user.send_time = datetime.time((8-userTimeOffset)%24)
+        
+        return HttpResponse(json.dumps({'status':'success'}))
+        
+    except Exception as e:
+        logging.info(e)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+
 
 
 
@@ -631,12 +743,44 @@ def prepopulateFields(request):
 # TODO check security of serving file this way, and with static server in production
 def ATriggerVerify(request):
     ATriggerFilePath = BASE_DIR + '/static/sourcebasesite/ATriggerVerify.txt'
-    logging.info(ATriggerFilePath)
+    #logging.info(ATriggerFilePath)
     txtfile = open(ATriggerFilePath, 'r')
-    logging.info(txtfile)
+    #logging.info(txtfile)
     #response = HttpResponse(txtfile)
     response = HttpResponse(content=txtfile)
     response['Content-Type'] = 'text/javascript'
     #response['Content-Disposition'] = 'attachment; filename=ATriggerVerify.txt'
-    logging.info(response)
+    #logging.info(response)
     return response
+
+
+
+
+
+
+'''
+def createDSTUpdateTask(request):
+    A_TRIGGER_KEY = Settings.get('A_TRIGGER_KEY')
+    A_TRIGGER_SECRET = Settings.get('A_TRIGGER_SECRET')
+    eastern = pytz.timezone('US/Eastern')
+    # allow 2 hours extra after daylight time switch (4 am instead of 2 am)
+    # DSTStartOrEndDateTime = eastern.localize(datetime.datetime(2019, 3, 11, 4), is_dst=True).isoformat()
+    DSTStartOrEndDateTime = eastern.localize(datetime.datetime(2018, 11, 4, 4), is_dst=True).isoformat()
+
+    
+    logging.info(DSTStartOrEndDateTime)
+
+    domain = 'https%3A%2F%2Fgrow-weather.appspot.com'
+    #domain = 'https%3A%2F%2Ffc2116ab.ngrok.io'
+
+    addURL = ('https://api.atrigger.com/v1/tasks/create?key=' + 
+    A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + 
+    '&timeSlice=1year&count=-1&url=' + domain + 
+    '/endpoints/updateDaylightSavings/' + '&tag_type=DST&first=' + DSTStartOrEndDateTime + '&post=True')
+
+    A_TRIGGER_PAYLOAD_SECRET = Settings.get('A_TRIGGER_PAYLOAD_SECRET')
+    data = {'A_TRIGGER_PAYLOAD_SECRET': A_TRIGGER_PAYLOAD_SECRET}
+    #r = requests.post(addURL, data={'userID': user.userID or 'None'}, verify=True)
+    addDSTTaskResponse = requests.post(addURL, data=data, verify=True)
+    return HttpResponse(json.dumps(addDSTTaskResponse.json()))
+'''
