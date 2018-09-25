@@ -342,7 +342,7 @@ def _sendMessage(userKey, body, rainAlert=False):
                     to= '+1' + user.phone,
                     from_=twilioNumber,
                 )
-            except e:
+            except:
                 error = "Sorry! We were not able to send you SMS at this time!"
 
         if user.receive_email:
@@ -451,8 +451,8 @@ def _updateATriggerTask(userKey):
         if user.receive_reports:
             if not user.task_exists:
 
-                # reportDatetime = _getReportDatetime(user.timezone)
-                reportDatetime = '2018-09-14T12:46:47.260683-10:00'
+                reportDatetime = _getReportDatetime(user.timezone)
+                # reportDatetime = '2018-09-14T12:46:47.260683-10:00'
                 # Production:
                 domain = 'https%3A%2F%2Fgrow-weather.appspot.com'
                 # Development:
@@ -460,7 +460,7 @@ def _updateATriggerTask(userKey):
 
                 addURL = ('https://api.atrigger.com/v1/tasks/create?key=' + 
                 A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + 
-                '&timeSlice=1minute&count=-1&url=' + domain + 
+                '&timeSlice=1day&count=-1&url=' + domain + 
                 '/endpoints/sendReport/' + 
                 '&tag_ID=' + userKey.id() + '&tag_type=reports&first=' + reportDatetime + '&post=True')
                 
@@ -797,6 +797,8 @@ def updateDaylightSavings(request):
     '''
     try:
         req = request.REQUEST
+        if Settings.get('A_TRIGGER_PAYLOAD_SECRET') != request.POST['A_TRIGGER_PAYLOAD_SECRET']:
+            return HttpResponse(error, status=401)
         A_TRIGGER_KEY = Settings.get('A_TRIGGER_KEY')
         A_TRIGGER_SECRET = Settings.get('A_TRIGGER_SECRET')
 
