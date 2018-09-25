@@ -36,7 +36,7 @@ class Report(ndb.Model):
     summary = ndb.StringProperty()
 
 class Alert(ndb.Model):
-    """weather report model"""
+    """rain alert model"""
     user = ndb.KeyProperty(kind=User)
     datetime = ndb.DateTimeProperty()
     precipitation = ndb.IntegerProperty()

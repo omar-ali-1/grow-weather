@@ -454,9 +454,9 @@ def _updateATriggerTask(userKey):
                 # reportDatetime = _getReportDatetime(user.timezone)
                 reportDatetime = '2018-09-14T12:46:47.260683-10:00'
                 # Production:
-                # domain = 'https%3A%2F%2Fgrow-weather.appspot.com'
+                domain = 'https%3A%2F%2Fgrow-weather.appspot.com'
                 # Development:
-                domain = 'https%3A%2F%2Ffc2116ab.ngrok.io'
+                # domain = 'https%3A%2F%2Ffc2116ab.ngrok.io'
 
                 addURL = ('https://api.atrigger.com/v1/tasks/create?key=' + 
                 A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + 
@@ -518,8 +518,8 @@ def sendReport(request):
             user.name, report.summary, report.dailyLow, report.dailyHigh, report.precipitation)
 
         userKey = ndb.Key(User, userID)
-        #deferred.defer(_sendMessage, userKey, reportBody, _queue='reports-queue')
-        _sendMessage(userKey, reportBody)
+        deferred.defer(_sendMessage, userKey, reportBody, _queue='reports-queue')
+        #_sendMessage(userKey, reportBody)
 
         return HttpResponse(json.dumps({'status':'success'}))
         
@@ -834,8 +834,9 @@ def ATriggerVerify(request):
     Args: HttpRequest object
     Returns: HttpResponse object
     '''
-    ATriggerFilePath = BASE_DIR + '/static/sourcebasesite/ATriggerVerify.txt'
-    txtfile = open(ATriggerFilePath, 'r')
+    #ATriggerFilePath = BASE_DIR + '/static/sourcebasesite/ATriggerVerify.txt'
+    #txtfile = open(ATriggerFilePath, 'r')
+    txtfile = Settings.get('A_TRIGGER_FILE')
     response = HttpResponse(content=txtfile)
     response['Content-Type'] = 'text/javascript'
     return response
