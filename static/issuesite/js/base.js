@@ -247,7 +247,8 @@ $(function(){
   
       $('#check-receive-rain').prop('checked', false);
   
-      $('#name').empty();
+      $('#user-name').empty();
+      $('#update-message').empty();
       configureFirebaseLoginWidget();
 
     }, function(error) {
