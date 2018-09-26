@@ -16,20 +16,13 @@ Including another URLconf
 from django.conf.urls import include, url
 from django.contrib import admin
 from sourcebasesite.views import *
-#from django.views.generic import RedirectView
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-# TODO: redirect urls that don't match anything to home (/source/)
-# TODO: for new source, or issue, or anything, new should not come after the thing in url. eg /source/new/, because 
-# for some reason the matcher does not match to newThing view, but rather to detail view with "new" as the id of requested
-# thing. When action="{% url 'issuesite:newIssue' %}" is used, the url looks the same, but routs properly for some reason.
-# look into it and see, but change to something like /new/source/ anyway.
 urlpatterns = [
-    # url(r'^$', RedirectView.as_view(url='/source/')), # change to source/
     url(r'^$', home, name='home'),
     url(r'^endpoints/verifyOrCreateUser/$', verifyOrCreateUser, name='verifyOrCreateUser'),
     # Serve text file used by scheduling server to verify this server
