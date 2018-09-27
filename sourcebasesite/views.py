@@ -501,7 +501,7 @@ def sendReport(request):
 
         # Additional security check to make sure task was created by this app. Payload is SSL-secured.
         if Settings.get('A_TRIGGER_PAYLOAD_SECRET') != request.POST['A_TRIGGER_PAYLOAD_SECRET']:
-            return HttpResponse(error, status=401)
+            return HttpResponse(status=401)
 
         userID = request.POST['userID']
         userKey = ndb.Key(User, userID)
@@ -798,7 +798,7 @@ def updateDaylightSavings(request):
     try:
         req = request.REQUEST
         if Settings.get('A_TRIGGER_PAYLOAD_SECRET') != request.POST['A_TRIGGER_PAYLOAD_SECRET']:
-            return HttpResponse(error, status=401)
+            return HttpResponse(status=401)
         A_TRIGGER_KEY = Settings.get('A_TRIGGER_KEY')
         A_TRIGGER_SECRET = Settings.get('A_TRIGGER_SECRET')
 
