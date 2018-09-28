@@ -1,6 +1,8 @@
 Numbers need to be verified manually in Twilio API for sms to work, since it is in trial
 
-
+Make settings in User entity booleans instead of strings
+Use projections, or partial entity fetch, instead of fetching entire entity
+Use task lets where appropriate.
 
 
 A few things I didn't do in the interest of time:

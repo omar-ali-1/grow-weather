@@ -466,8 +466,12 @@ def _updateATriggerTask(userKey):
                 
                 A_TRIGGER_PAYLOAD_SECRET = Settings.get('A_TRIGGER_PAYLOAD_SECRET')
                 data = {'userID': userKey.id() or 'None', 'A_TRIGGER_PAYLOAD_SECRET': A_TRIGGER_PAYLOAD_SECRET}
-
-                addTaskResponse = requests.post(addURL, data=data, verify=True)
+                # Quick fix for timeout issue. Shouldn't have to deal with timeout issues, so to fix timeout 
+                # problem, just send the request, and it should be executed by A Trigger.
+                try:
+                    addTaskResponse = requests.post(addURL, data=data, verify=True)
+                except:
+                    pass
                 user.task_exists = True
                 user.put()
         else:
@@ -475,7 +479,12 @@ def _updateATriggerTask(userKey):
                 deleteURL = ('https://api.atrigger.com/v1/tasks/delete?key=' + 
                 A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + '&tag_ID=' + 
                 userKey.id() + '&tag_type=reports')
-                deleteTaskResponse = requests.post(deleteURL, verify=True)
+                # Shouldn't have to deal with timeout issues, so to fix timeout problem, just send 
+                # the request, and it should be executed by A Trigger.
+                try:
+                    deleteTaskResponse = requests.post(deleteURL, verify=True, timeout=20)
+                except:
+                    pass
                 user.task_exists = False
                 user.put()
         return HttpResponse()
@@ -772,9 +781,12 @@ def _updateUserReportTimeDST(userKey):
 
             A_TRIGGER_PAYLOAD_SECRET = Settings.get('A_TRIGGER_PAYLOAD_SECRET')
             data = {'userID': userKey.id() or 'None', 'A_TRIGGER_PAYLOAD_SECRET': A_TRIGGER_PAYLOAD_SECRET}
-            
-            addTaskResponse = requests.post(addURL, data=data, verify=True)
-
+            # Quick fix for timeout issue. Shouldn't have to deal with timeout issues, so to fix timeout 
+            # problem, just send the request, and it should be executed by A Trigger.
+            try:
+                addTaskResponse = requests.post(addURL, data=data, verify=True)
+            except:
+                pass
         return HttpResponse()
     except Exception as e:
         logging.info(e)
@@ -804,8 +816,12 @@ def updateDaylightSavings(request):
 
         deleteURL = ('https://api.atrigger.com/v1/tasks/delete?key=' + 
             A_TRIGGER_KEY + '&secret=' + A_TRIGGER_SECRET + '&tag_type=reports')
-        
-        deleteTaskResponse = requests.post(deleteURL, verify=True)
+        # Quick fix for timeout issue. Shouldn't have to deal with timeout issues, so to fix timeout 
+        # problem, just send the request, and it should be executed by A Trigger.
+        try:
+            deleteTaskResponse = requests.post(deleteURL, verify=True)
+        except:
+            pass
 
         # task_exists ensures that not only is user signed up to get reports, but that the task exists in
         # A Trigger in order to avoid duplicate tasks. Otherwise, user is not signed up or task is queued
