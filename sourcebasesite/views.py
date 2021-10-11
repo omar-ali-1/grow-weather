@@ -342,8 +342,8 @@ def _sendMessage(userKey, body, rainAlert=False):
                     to= '+1' + user.phone,
                     from_=twilioNumber,
                 )
-            except:
-                error = "Sorry! We were not able to send you SMS at this time!"
+            except Exception as e:
+                error = "Sorry! We were not able to send you SMS at this time!" + str(e)
 
         if user.receive_email:
             if rainAlert:
