@@ -275,6 +275,7 @@ function updateUser(data) {
         beforeSend: function() {
           $('#save-settings').attr('disabled', 'disabled');
           $('#resend-report').attr('disabled', 'disabled');
+          $('#send-current-weather').attr('disabled', 'disabled');
           $('#update-message').html('');
           $('#spinner-container').show();
           addSpinner($('#spinner-container'));
@@ -282,6 +283,7 @@ function updateUser(data) {
         complete: function(){
           $('#save-settings').removeAttr('disabled', 'disabled');
           $('#resend-report').removeAttr('disabled', 'disabled');
+          $('#send-current-weather').removeAttr('disabled', 'disabled');
           removeSpinner($('#spinner-container'));
           $('#spinner-container').hide();
 
@@ -330,6 +332,7 @@ function resendReport(data) {
           dataType: 'json',
         beforeSend: function() {
           $('#resend-report').attr('disabled', 'disabled');
+          $('#send-current-weather').attr('disabled', 'disabled');
           $('#save-settings').attr('disabled', 'disabled');
           $('#update-message').html('');
           $('#spinner-container').show();
@@ -337,6 +340,7 @@ function resendReport(data) {
         },
         complete: function(){
           $('#resend-report').removeAttr('disabled', 'disabled');
+          $('#send-current-weather').removeAttr('disabled', 'disabled');
           $('#save-settings').removeAttr('disabled', 'disabled');
           removeSpinner($('#spinner-container'));
           $('#spinner-container').hide();
@@ -366,10 +370,63 @@ function resendReport(data) {
     $('#update-message').html(err);
     $('#issue-message').show();
   };
-
-
 };
 
+function sendCurrentWeather(data) {
+  //console.log("updateUserSettings");
+  //console.log($( "#settings-form" ).attr("action"));
+  try {
+    sendURL = '/endpoints/sendCurrentWeather/';
+    appUser.getIdToken().then(function(idToken) {
+      $.ajax({
+          url: sendURL,
+          type: 'get',
+          headers: {
+              'Authorization': 'Bearer ' + idToken
+              //'Cookie': 'csrftoken={{ csrf_token }}'
+          },
+          dataType: 'json',
+        beforeSend: function() {
+          $('#resend-report').attr('disabled', 'disabled');
+          $('#send-current-weather').attr('disabled', 'disabled');
+          $('#save-settings').attr('disabled', 'disabled');
+          $('#update-message').html('');
+          $('#spinner-container').show();
+          addSpinner($('#spinner-container'));
+        },
+        complete: function(){
+          $('#resend-report').removeAttr('disabled', 'disabled');
+          $('#send-current-weather').removeAttr('disabled', 'disabled');
+          $('#save-settings').removeAttr('disabled', 'disabled');
+          removeSpinner($('#spinner-container'));
+          $('#spinner-container').hide();
+
+        },
+        success: function (data) {
+            //console.info(data);
+            if (data['err']) {
+              message = data['err'];
+              //console.info("in here");
+            } else {
+              message = 'Success!';
+            };
+        //console.info("over here");
+        $('#update-message').html(message);
+        $('#update-message').show();
+        },
+        error: function(request, status, errorThrown) {
+          //console.info("eroooor");
+          $('#issue-message').html(errorThrown);
+          $('#issue-message').show();
+        }
+      });
+          });
+  }
+  catch(err) {
+    $('#update-message').html(err);
+    $('#issue-message').show();
+  };
+};
 
 
 // Event Handlers
@@ -389,6 +446,15 @@ $( "#resend-report" ).on( "click", function( event ) {
   //var data = $( this ).serialize();
   //console.log(data);
   resendReport();
+  //getHistory();
+});
+
+$( "#send-current-weather" ).on( "click", function( event ) {
+  event.preventDefault();
+  //console.log(this);
+  //var data = $( this ).serialize();
+  //console.log(data);
+  sendCurrentWeather();
   //getHistory();
 });
 
