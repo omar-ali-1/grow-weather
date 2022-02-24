@@ -567,7 +567,67 @@ def resendReport(request):
         HttpResponse(status=500)
 
 
+def sendCurrentWeather(request):
+    '''
+    Given a GET request including user token, validates user, and enqueues task to send current weather
 
+    Args: HttpRequest object
+    Returns: HttpResponse object
+    '''
+    try:
+        claims = _getClaims(request)
+        userKey = ndb.Key(User, claims['sub'])
+        user = userKey.get()
+        response = _sendReport(userKey.id())
+        if not response:
+            return HttpResponse(json.dumps({'err':'You don\'t have any reports yet!'}))
+    except Exception as e:
+        logging.info(e)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+        HttpResponse(status=500)
+
+def _sendReport(userID):
+    '''
+    Given a POST request containing user ID in payload, fetch weather for the user, and enqueue a
+    task that will send the appropriate message to user.
+
+    Args: HttpRequest object
+    Returns: HttpResponse object
+    '''
+    try:
+        req = request.REQUEST
+
+        # Additional security check to make sure task was created by this app. Payload is SSL-secured.
+        if Settings.get('A_TRIGGER_PAYLOAD_SECRET') != request.POST['A_TRIGGER_PAYLOAD_SECRET']:
+            return HttpResponse(status=401)
+
+        userID = userID
+        userKey = ndb.Key(User, userID)
+        user = userKey.get()
+        dailySummary, dailyLow, dailyHigh, dailyRainProb = _getWeather(user.geoString)
+        
+        nowUTCDatetime = datetime.datetime.utcnow()
+
+        report = Report(user=userKey, datetime=nowUTCDatetime, dailyLow=dailyLow, 
+            dailyHigh=dailyHigh, summary=dailySummary, precipitation=dailyRainProb)
+        report.put()
+
+        reportBody = u'\nHey {}!\n\nHere is your forecast for today:\n\n{}\n\nDaily Low: {}\N{DEGREE SIGN}F\nDaily High: {}\N{DEGREE SIGN}F\nChance of rain: {}%'.format(
+            user.name, report.summary, report.dailyLow, report.dailyHigh, report.precipitation)
+
+        userKey = ndb.Key(User, userID)
+        deferred.defer(_sendMessage, userKey, reportBody, _queue='reports-queue')
+        #_sendMessage(userKey, reportBody)
+
+        return HttpResponse(json.dumps({'status':'success'}))
+        
+    except Exception as e:
+        logging.info(e)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
 
 
 ############ Update User ####################################

@@ -30,6 +30,7 @@ urlpatterns = [
     url(r'^endpoints/updateUser/$', updateUser, name='updateUser'),
     url(r'^endpoints/sendReport/$', sendReport, name='sendReport'),
     url(r'^endpoints/resendReport/$', resendReport, name='resendReport'),
+    url(r'^endpoints/sendCurrentWeather/$', sendCurrentWeather, name='sendCurrentWeather'),
     url(r'^endpoints/prepopulateFields/$', prepopulateFields, name='prepopulateFields'),
     url(r'^endpoints/checkRainAndAlertUsers/$', checkRainAndAlertUsers, name='checkRainAndAlertUsers'),
     url(r'^endpoints/getAlertHistory/$', getAlertHistory, name='getAlertHistory'),
