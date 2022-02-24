@@ -312,6 +312,8 @@ def _getWeather(geoString):
     except Exception as e:
         logging.info(e)
         exc_type, exc_obj, exc_tb = sys.exc_info()
+        logging.info(exc_tb.tb_lineno)
+        logging.info("geostring" + geoString)
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
 
@@ -597,12 +599,6 @@ def _sendReport(userID):
     Returns: HttpResponse object
     '''
     try:
-        req = request.REQUEST
-
-        # Additional security check to make sure task was created by this app. Payload is SSL-secured.
-        if Settings.get('A_TRIGGER_PAYLOAD_SECRET') != request.POST['A_TRIGGER_PAYLOAD_SECRET']:
-            return HttpResponse(status=401)
-
         userID = userID
         userKey = ndb.Key(User, userID)
         user = userKey.get()
@@ -627,6 +623,7 @@ def _sendReport(userID):
         logging.info(e)
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        logging.info(exc_tb.tb_lineno)
         print(exc_type, fname, exc_tb.tb_lineno)
 
 
